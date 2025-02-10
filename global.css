@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Configuración global de la fuente y colores */
+html, body {
+  @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-white;
+  font-size: 16px;
+}
+
+/* Evitar desplazamiento no deseado en dispositivos móviles */
+body {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Soporte para accesibilidad */
+button, a {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+/* Estilos específicos de la app */
+.container {
+  @apply mx-auto max-w-4xl p-6;
+}
