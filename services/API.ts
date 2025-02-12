@@ -1,6 +1,7 @@
 // services/api.ts
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Reemplaza con tu URL real
+// const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Reemplaza con tu URL real
+const API_BASE_URL = 'http://ec2-18-118-160-81.us-east-2.compute.amazonaws.com/api';
 
 interface Location {
   latitude: number;
