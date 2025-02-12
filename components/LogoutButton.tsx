@@ -1,0 +1,25 @@
+import React, { useContext } from "react";
+import { Pressable, Text } from "react-native";
+import { useRouter } from "expo-router";
+import { AuthContext } from "@/context/AuthContext";
+
+export default function LogoutButton() {
+  const { logout } = useContext(AuthContext);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/login");
+  };
+
+  return (
+    <Pressable
+      onPress={handleLogout}
+      className="bg-red-600 px-4 py-2 rounded"
+      accessibilityLabel="Logout"
+      role="button"
+    >
+      <Text className="text-white text-base font-semibold">Logout</Text>
+    </Pressable>
+  );
+}

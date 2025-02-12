@@ -1,3 +1,7 @@
+// services/api.ts
+
+const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Reemplaza con tu URL real
+
 interface Location {
   latitude: number;
   longitude: number;
@@ -27,11 +31,43 @@ interface Settings {
   dndEndTime: string;
 }
 
-const API = {
+interface LoginResponse {
+  token: string;
+  user: {
+    id: number;
+    email: string;
+    role: ["ROLE_SENIOR"] | ["ROLE_CAREGIVER"];
+  };
+}
+
+const api = {
+  login: async (email: string, pin: string): Promise<LoginResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password: pin }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+
+      const data: LoginResponse = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error in login:", error);
+      throw error;
+    }
+  },
+
   sendSensorData: async (data: SensorData): Promise<boolean> => {
     try {
       console.log("Enviando datos de sensores:", data);
-      // Aquí se integraría la llamada real a la API
+      // Aquí se integraría la llamada real a la API.
       return true;
     } catch (error) {
       console.error("Error enviando datos de sensores:", error);
@@ -42,7 +78,7 @@ const API = {
   sendAlert: async (alertData: AlertData): Promise<boolean> => {
     try {
       console.log("Enviando alerta:", alertData);
-      // Aquí se integraría la llamada real
+      // Aquí se integraría la llamada real.
       return true;
     } catch (error) {
       console.error("Error enviando alerta:", error);
@@ -64,7 +100,10 @@ const API = {
 
   getSeniorLocation: async (): Promise<Location> => {
     try {
-      return { latitude: 37.78825 + Math.random() * 0.001, longitude: -122.4324 + Math.random() * 0.001 };
+      return {
+        latitude: 37.78825 + Math.random() * 0.001,
+        longitude: -122.4324 + Math.random() * 0.001,
+      };
     } catch (error) {
       console.error("Error obteniendo ubicación del adulto mayor:", error);
       return { latitude: 0, longitude: 0 }; // Ubicación por defecto en caso de error
@@ -83,6 +122,7 @@ const API = {
   updateSettings: async (settings: Settings): Promise<boolean> => {
     try {
       console.log("Actualizando configuración:", settings);
+      // Aquí se integraría la llamada real a la API.
       return true;
     } catch (error) {
       console.error("Error actualizando configuración:", error);
@@ -91,4 +131,4 @@ const API = {
   },
 };
 
-export default API;
+export default api;

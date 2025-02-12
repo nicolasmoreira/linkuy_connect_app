@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Linkuy Connect",
-    "slug": "linkuy_connect",
+    "slug": "linkuy-connect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -44,6 +44,15 @@
     "experiments": {
       "typedRoutes": true,
       "router": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "1360bbd0-d0c1-41bc-9210-9b9a89d16c31"
+      }
+    },
+    "owner": "linkuyconnect"
   }
 }
