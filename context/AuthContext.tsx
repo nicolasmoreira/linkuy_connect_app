@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "@/services/api";
+import API from "@/services/api";
 
 interface User {
   id: number;
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const result = await api.login(email, password);
+      const result = await API.login(email, password);
         const loggedUser: User = {
           id: result.user.id,
           email: result.user.email,

@@ -41,7 +41,7 @@ interface LoginResponse {
   };
 }
 
-const api = {
+const API = {
   login: async (email: string, pin: string): Promise<LoginResponse> => {
     try {
       const response = await fetch(`${API_BASE_URL}/login`, {
@@ -132,4 +132,4 @@ const api = {
   },
 };
 
-export default api;
+export default API;

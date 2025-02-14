@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "@/services/api";
+import API from "@/services/api";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,7 @@ export default function LoginScreen() {
     }
 
     try {
-      const result = await api.login(email, pin);
+      const result = await API.login(email, pin);
       // Guardar el token y la información del usuario en AsyncStorage
       await AsyncStorage.setItem("userToken", result.token);
       await AsyncStorage.setItem("userInfo", JSON.stringify(result.user));

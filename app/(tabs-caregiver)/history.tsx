@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import api from "@/services/api";
+import API from "@/services/api";
 
 interface HistoryEntry {
   type: "fall" | "inactivity" | "emergency";
@@ -18,7 +18,7 @@ export default function HistoryScreen() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const data = await api.getHistory();
+        const data = await API.getHistory();
         setHistory(data);
       } catch (error) {
         console.error("Error fetching history:", error);

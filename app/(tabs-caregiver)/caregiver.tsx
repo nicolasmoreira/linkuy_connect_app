@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import MapViewComponent from "@/components/MapViewComponent";
-import api from "@/services/api";
+import API from "@/services/api";
 
 export default function CaregiverDashboard() {
   const [seniorLocation, setSeniorLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -13,7 +13,7 @@ export default function CaregiverDashboard() {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const data = await api.getSeniorLocation();
+        const data = await API.getSeniorLocation();
         setSeniorLocation(data);
       } catch (error) {
         console.error("Error fetching senior location:", error);

@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import api from "@/services/api";
+import API from "@/services/api";
 import LogoutButton from "@/components/LogoutButton";
 
 interface Settings {
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const data = await api.getSettings();
+        const data = await API.getSettings();
         setSettings(data);
       } catch (error) {
         console.error("Error fetching settings:", error);
@@ -50,7 +50,7 @@ export default function SettingsScreen() {
     }
 
     try {
-      const success = await api.updateSettings(settings);
+      const success = await API.updateSettings(settings);
       if (success) {
         Alert.alert("Éxito", "Configuración guardada correctamente.");
       } else {
