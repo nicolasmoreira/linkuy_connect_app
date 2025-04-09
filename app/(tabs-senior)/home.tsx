@@ -7,6 +7,7 @@ import * as BackgroundFetch from "expo-background-fetch";
 import { Accelerometer } from "expo-sensors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ActivityService from "@/services/activityService";
+import { Location as AppLocation } from "@/types";
 
 /* ------------------------------------------------------------------
    Tipos y Constantes
@@ -37,7 +38,10 @@ const STORAGE_KEYS = {
 ------------------------------------------------------------------ */
 async function storeLastMovementTime(timestamp: number) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.LAST_MOVEMENT_TIME, timestamp.toString());
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.LAST_MOVEMENT_TIME,
+      timestamp.toString()
+    );
   } catch (error) {
     console.error("Error guardando lastMovementTime:", error);
   }
@@ -57,8 +61,14 @@ async function getLastMovementTime(): Promise<number> {
 
 async function storeLatestLocation(coords: Location.LocationObjectCoords) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.LATEST_LOCATION_LAT, coords.latitude.toString());
-    await AsyncStorage.setItem(STORAGE_KEYS.LATEST_LOCATION_LON, coords.longitude.toString());
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.LATEST_LOCATION_LAT,
+      coords.latitude.toString()
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.LATEST_LOCATION_LON,
+      coords.longitude.toString()
+    );
   } catch (error) {
     console.error("Error guardando última ubicación:", error);
   }
@@ -123,15 +133,24 @@ TaskManager.defineTask(LOCATION_UPDATE_FETCH_TASK, async () => {
   try {
     const latestLocation = await getLatestLocation();
     if (latestLocation) {
-      console.log("BackgroundFetch: Enviando actualización de ubicación desde BackgroundFetch");
-      await ActivityService.sendLocationUpdate(latestLocation, 0, 0);
+      console.log(
+        "BackgroundFetch: Enviando actualización de ubicación desde BackgroundFetch"
+      );
+      await ActivityService.sendLocationUpdate(
+        convertToLocation(latestLocation),
+        0,
+        0
+      );
       return BackgroundFetch.BackgroundFetchResult.NewData;
     } else {
       console.warn("BackgroundFetch: No hay ubicación almacenada para enviar");
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
   } catch (error) {
-    console.error("Error en BackgroundFetch LOCATION_UPDATE_FETCH_TASK:", error);
+    console.error(
+      "Error en BackgroundFetch LOCATION_UPDATE_FETCH_TASK:",
+      error
+    );
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
@@ -148,7 +167,10 @@ TaskManager.defineTask(INACTIVITY_TASK_NAME, async () => {
       console.log("Inactividad detectada:", inactiveTime, "segundos");
       const storedLocation = await getLatestLocation();
       if (storedLocation) {
-        await ActivityService.sendInactivityAlert(storedLocation, inactiveTime);
+        await ActivityService.sendInactivityAlert(
+          convertToLocation(storedLocation),
+          inactiveTime
+        );
       } else {
         console.warn("Ubicación no disponible para alerta de inactividad");
       }
@@ -163,12 +185,26 @@ TaskManager.defineTask(INACTIVITY_TASK_NAME, async () => {
 /* ------------------------------------------------------------------
    Componente Principal
 ------------------------------------------------------------------ */
+
+function convertToLocation(coords: Location.LocationObjectCoords): AppLocation {
+  return {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    accuracy: coords.accuracy ?? undefined,
+  };
+}
+
 export default function SeniorHomeScreen() {
-  const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
+  const [location, setLocation] =
+    useState<Location.LocationObjectCoords | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const accelerometerSubscription = useRef<AccelerometerSubscription | null>(null);
-  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+  const accelerometerSubscription = useRef<AccelerometerSubscription | null>(
+    null
+  );
+  const locationSubscription = useRef<Location.LocationSubscription | null>(
+    null
+  );
   // Ref para almacenar la ubicación actual (para foreground)
   const currentLocationRef = useRef<Location.LocationObjectCoords | null>(null);
 
@@ -176,99 +212,121 @@ export default function SeniorHomeScreen() {
     async function startLocationTracking() {
       setLoading(true);
 
-      // Solicitar permisos en primer plano
-      const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-      if (fgStatus !== "granted") {
-        Alert.alert(
-          "Permiso denegado",
-          "No podemos acceder a tu ubicación. Habilita los permisos en la configuración de tu dispositivo."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // Solicitar permisos en segundo plano
-      const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-      if (bgStatus !== "granted") {
-        Alert.alert(
-          "Permiso denegado",
-          "No podemos acceder a tu ubicación en segundo plano. Habilita los permisos en la configuración de tu dispositivo."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // Registrar tarea de ubicación en background
-      const isLocationTaskRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
-      if (!isLocationTaskRegistered) {
-        console.log("Registrando tarea de ubicación en background...");
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 60_000, // Sugerencia: cada 1 minuto
-          distanceInterval: 0,
-          foregroundService: {
-            notificationTitle: "Ubicación activa",
-            notificationBody: "La app está rastreando tu ubicación en background.",
-            notificationColor: "#2563EB",
-          },
-        });
-      } else {
-        console.log("La tarea de ubicación en background ya estaba registrada.");
-      }
-
-      // Registrar tarea de BackgroundFetch para enviar actualización de ubicación cada 60 segundos
       try {
-        await BackgroundFetch.registerTaskAsync(LOCATION_UPDATE_FETCH_TASK, {
-          minimumInterval: 60, // cada 60 segundos
-          stopOnTerminate: false,
-          startOnBoot: true,
-        });
-        console.log("Tarea BackgroundFetch para actualización de ubicación registrada");
-      } catch (err: any) {
-        if (err?.message?.includes("already registered")) {
-          console.log("La tarea BackgroundFetch para actualización de ubicación ya estaba registrada");
-        } else {
-          console.error("Error al registrar tarea BackgroundFetch para ubicación:", err);
+        // Solicitar permisos en primer plano
+        const { status: fgStatus } =
+          await Location.requestForegroundPermissionsAsync();
+        if (fgStatus !== "granted") {
+          Alert.alert(
+            "Permiso denegado",
+            "No podemos acceder a tu ubicación. Habilita los permisos en la configuración de tu dispositivo."
+          );
+          setLoading(false);
+          return;
         }
-      }
 
-      // Suscripción en primer plano para obtener la ubicación en tiempo real y actualizar la ref
-      locationSubscription.current = await Location.watchPositionAsync(
-        {
+        // Solicitar permisos en segundo plano
+        const { status: bgStatus } =
+          await Location.requestBackgroundPermissionsAsync();
+        if (bgStatus !== "granted") {
+          Alert.alert(
+            "Permiso denegado",
+            "No podemos acceder a tu ubicación en segundo plano. Habilita los permisos en la configuración de tu dispositivo."
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Obtener la ubicación actual inmediatamente
+        const currentLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
-          timeInterval: 60_000, // se actualiza la ref, pero el envío se controla por el setInterval
-          distanceInterval: 0,
-        },
-        async (loc) => {
-          console.log("Ubicación (foreground):", loc.coords);
-          setLocation(loc.coords);
-          await storeLatestLocation(loc.coords);
-          currentLocationRef.current = loc.coords;
-        }
-      );
+        });
+        console.log("Ubicación inicial:", currentLocation.coords);
+        setLocation(currentLocation.coords);
+        await storeLatestLocation(currentLocation.coords);
+        currentLocationRef.current = currentLocation.coords;
 
-      setLoading(false);
+        // Registrar tarea de ubicación en background
+        const isLocationTaskRegistered =
+          await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+        if (!isLocationTaskRegistered) {
+          console.log("Registrando tarea de ubicación en background...");
+          await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 60_000, // cada 1 minuto
+            distanceInterval: 0,
+            foregroundService: {
+              notificationTitle: "Ubicación activa",
+              notificationBody:
+                "La app está rastreando tu ubicación en background.",
+              notificationColor: "#2563EB",
+            },
+          });
+        }
+
+        // Registrar tarea de BackgroundFetch para enviar actualización de ubicación
+        try {
+          await BackgroundFetch.registerTaskAsync(LOCATION_UPDATE_FETCH_TASK, {
+            minimumInterval: 60, // cada 60 segundos
+            stopOnTerminate: false,
+            startOnBoot: true,
+          });
+        } catch (err: any) {
+          if (!err?.message?.includes("already registered")) {
+            console.error("Error al registrar tarea BackgroundFetch:", err);
+          }
+        }
+
+        // Suscripción en primer plano para obtener la ubicación en tiempo real
+        locationSubscription.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 60_000,
+            distanceInterval: 0,
+          },
+          async (loc) => {
+            console.log("Ubicación (foreground):", loc.coords);
+            setLocation(loc.coords);
+            await storeLatestLocation(loc.coords);
+            currentLocationRef.current = loc.coords;
+          }
+        );
+      } catch (error) {
+        console.error("Error en startLocationTracking:", error);
+        Alert.alert(
+          "Error",
+          "No se pudo iniciar el seguimiento de ubicación. Por favor, intenta nuevamente."
+        );
+      } finally {
+        setLoading(false);
+      }
     }
 
     function startFallDetection() {
       accelerometerSubscription.current?.remove();
-      accelerometerSubscription.current = Accelerometer.addListener(async ({ x, y, z }) => {
-        try {
-          const acceleration = Math.sqrt(x * x + y * y + z * z);
-          const FALL_THRESHOLD = 3.5;
-          if (acceleration > FALL_THRESHOLD) {
-            console.log("Posible caída detectada:", acceleration);
-            const coords = await getLatestLocation();
-            if (coords) {
-              await ActivityService.sendFallDetected(coords, acceleration, 10);
+      accelerometerSubscription.current = Accelerometer.addListener(
+        async ({ x, y, z }) => {
+          try {
+            const acceleration = Math.sqrt(x * x + y * y + z * z);
+            const FALL_THRESHOLD = 3.5;
+            if (acceleration > FALL_THRESHOLD) {
+              console.log("Posible caída detectada:", acceleration);
+              const coords = await getLatestLocation();
+              if (coords) {
+                await ActivityService.sendFallDetected(
+                  convertToLocation(coords),
+                  acceleration,
+                  10
+                );
+              }
+            } else {
+              await storeLastMovementTime(Date.now());
             }
-          } else {
-            await storeLastMovementTime(Date.now());
+          } catch (error) {
+            console.error("Error en detección de caída:", error);
           }
-        } catch (error) {
-          console.error("Error en detección de caída:", error);
         }
-      });
+      );
     }
 
     async function registerInactivityTask() {
@@ -295,14 +353,24 @@ export default function SeniorHomeScreen() {
     // En foreground, se envía la actualización cada 60 segundos
     const foregroundInterval = setInterval(async () => {
       if (currentLocationRef.current) {
-        console.log("Foreground: Enviando actualización programada de ubicación");
-        await ActivityService.sendLocationUpdate(currentLocationRef.current, 0, 0);
+        console.log(
+          "Foreground: Enviando actualización programada de ubicación"
+        );
+        await ActivityService.sendLocationUpdate(
+          convertToLocation(currentLocationRef.current),
+          0,
+          0
+        );
       }
     }, 60_000);
 
     return () => {
-      accelerometerSubscription.current?.remove();
-      locationSubscription.current?.remove();
+      if (locationSubscription.current) {
+        locationSubscription.current.remove();
+      }
+      if (accelerometerSubscription.current) {
+        accelerometerSubscription.current.remove();
+      }
       clearInterval(foregroundInterval);
     };
   }, []);
@@ -313,9 +381,24 @@ export default function SeniorHomeScreen() {
 
   const handleEmergencyAlert = async () => {
     try {
+      if (!location) {
+        Alert.alert(
+          "Error",
+          "No se pudo obtener tu ubicación. Por favor, asegúrate de que la aplicación tenga permisos de ubicación y vuelve a intentarlo."
+        );
+        return;
+      }
+
+      // Format the location object to match the expected interface
+      const formattedLocation = {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy,
+      };
+
       await ActivityService.sendAlert({
         type: "EMERGENCY_BUTTON_PRESSED",
-        location,
+        location: formattedLocation,
         message: "Alerta de emergencia activada por el usuario senior.",
       });
       Alert.alert(
@@ -347,7 +430,9 @@ export default function SeniorHomeScreen() {
               accessibilityHint="Presiona para llamar a los servicios de emergencia"
               accessibilityRole="button"
             >
-              <Text className="text-white text-xl font-bold text-center">LLAMAR 911</Text>
+              <Text className="text-white text-xl font-bold text-center">
+                LLAMAR 911
+              </Text>
             </Pressable>
             <Pressable
               className="bg-red-600 w-32 h-32 rounded-full justify-center items-center mx-2"
@@ -356,7 +441,9 @@ export default function SeniorHomeScreen() {
               accessibilityHint="Presiona para enviar una alerta de emergencia a tu cuidador"
               accessibilityRole="button"
             >
-              <Text className="text-white text-xl font-bold text-center">ENVIAR ALERTA</Text>
+              <Text className="text-white text-xl font-bold text-center">
+                ENVIAR ALERTA
+              </Text>
             </Pressable>
           </View>
           <View className="mt-10 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg w-full">
@@ -364,19 +451,23 @@ export default function SeniorHomeScreen() {
               Instrucciones:
             </Text>
             <Text className="mt-2 text-gray-600 dark:text-gray-400">
-              - Tu ubicación se actualiza automáticamente cada minuto (foreground y background).
+              - Tu ubicación se actualiza automáticamente cada minuto
+              (foreground y background).
             </Text>
             <Text className="mt-2 text-gray-600 dark:text-gray-400">
-              - Si no se detecta movimiento por más de 5 minutos, se enviará una alerta a tu cuidador.
+              - Si no se detecta movimiento por más de 5 minutos, se enviará una
+              alerta a tu cuidador.
             </Text>
             <Text className="mt-2 text-gray-600 dark:text-gray-400">
-              - En caso de caída, la app intentará detectar el impacto y enviará una alerta automática.
+              - En caso de caída, la app intentará detectar el impacto y enviará
+              una alerta automática.
             </Text>
             <Text className="mt-2 text-gray-600 dark:text-gray-400">
               - Para contactar a los servicios de emergencia, presiona "911".
             </Text>
             <Text className="mt-2 text-gray-600 dark:text-gray-400">
-              - Para enviar manualmente una alerta de emergencia, presiona "ENVIAR ALERTA".
+              - Para enviar manualmente una alerta de emergencia, presiona
+              "ENVIAR ALERTA".
             </Text>
           </View>
         </>

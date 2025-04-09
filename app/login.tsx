@@ -1,14 +1,32 @@
 // app/login.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "@/services/api";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useColorScheme } from "react-native";
+import API from "@/services/API";
+import ActivityService from "@/services/activityService";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const [isPinFocused, setIsPinFocused] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const handleLogin = async () => {
     if (!email || !pin) {
@@ -16,13 +34,14 @@ export default function LoginScreen() {
       return;
     }
 
+    setIsLoading(true);
     try {
       const result = await API.login(email, pin);
-      // Guardar el token y la información del usuario en AsyncStorage
       await AsyncStorage.setItem("userToken", result.token);
       await AsyncStorage.setItem("userInfo", JSON.stringify(result.user));
-      
-      const userRole = result.user.role as string[];  // Type assertion
+      await ActivityService.setUserId(result.user.id);
+
+      const userRole = result.user.role as string[];
       if (userRole.includes("ROLE_CAREGIVER")) {
         router.push("/(tabs-caregiver)/caregiver");
       } else if (userRole.includes("ROLE_SENIOR")) {
@@ -32,56 +51,124 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Credenciales incorrectas.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const inputStyle = (isFocused: boolean) => `
+    bg-gray-100 dark:bg-gray-800 
+    p-4 rounded-lg mt-4 
+    text-gray-900 dark:text-white
+    border-2 ${isFocused ? "border-blue-500" : "border-transparent"}
+  `;
+
   return (
-    <View className="flex-1 bg-white dark:bg-gray-900 p-6 justify-center">
-      <Text className="text-3xl font-bold text-gray-800 dark:text-white text-center">
-        Iniciar Sesión
-      </Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className="flex-1 bg-white dark:bg-gray-900"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
+      <View className="flex-1 px-6 justify-center">
+        <View className="items-center mb-8">
+          <Text
+            className="text-3xl font-bold text-gray-800 dark:text-white mb-2"
+            accessibilityRole="header"
+          >
+            Bienvenido a LinkuyConnect
+          </Text>
+          <Text
+            className="text-gray-600 dark:text-gray-300 text-center"
+            accessibilityRole="text"
+          >
+            Monitoreo y cuidado para adultos mayores
+          </Text>
+        </View>
 
-      <TextInput
-        className="bg-gray-200 dark:bg-gray-700 p-4 rounded-lg mt-6 text-gray-900 dark:text-white"
-        placeholder="Correo electrónico"
-        placeholderTextColor="#aaa"
-        value={email}
-        onChangeText={(text) => setEmail(text.toLowerCase())}
-        keyboardType="email-address"
-        accessibilityLabel="Campo de correo electrónico"
-      />
+        <View className="space-y-4">
+          <View>
+            <Text
+              className="text-gray-700 dark:text-gray-300 mb-1"
+              accessibilityRole="text"
+            >
+              Correo electrónico
+            </Text>
+            <TextInput
+              className={inputStyle(isEmailFocused)}
+              placeholder="ejemplo@correo.com"
+              placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
+              value={email}
+              onChangeText={(text) => setEmail(text.toLowerCase())}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              onFocus={() => setIsEmailFocused(true)}
+              onBlur={() => setIsEmailFocused(false)}
+              accessibilityLabel="Campo de correo electrónico"
+              accessibilityHint="Ingresa tu correo electrónico"
+            />
+          </View>
 
-      <TextInput
-        className="bg-gray-200 dark:bg-gray-700 p-4 rounded-lg mt-4 text-gray-900 dark:text-white"
-        placeholder="PIN"
-        maxLength={8}
-        keyboardType="numeric"
-        placeholderTextColor="#aaa"
-        value={pin}
-        onChangeText={setPin}
-        secureTextEntry
-        accessibilityLabel="Campo de PIN"
-      />
+          <View>
+            <Text
+              className="text-gray-700 dark:text-gray-300 mb-1"
+              accessibilityRole="text"
+            >
+              PIN
+            </Text>
+            <TextInput
+              className={inputStyle(isPinFocused)}
+              placeholder="••••••••"
+              maxLength={8}
+              keyboardType="numeric"
+              placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
+              value={pin}
+              onChangeText={setPin}
+              secureTextEntry
+              onFocus={() => setIsPinFocused(true)}
+              onBlur={() => setIsPinFocused(false)}
+              accessibilityLabel="Campo de PIN"
+              accessibilityHint="Ingresa tu PIN de 8 dígitos"
+            />
+          </View>
 
-      <Pressable
-        className="bg-blue-600 p-4 rounded-xl mt-6 items-center"
-        onPress={handleLogin}
-        accessibilityLabel="Iniciar sesión"
-        role="button"
-      >
-        <Text className="text-white text-lg font-semibold">Ingresar</Text>
-      </Pressable>
+          <Pressable
+            className={`
+              bg-blue-600 p-4 rounded-xl mt-6 items-center
+              ${isLoading ? "opacity-70" : ""}
+            `}
+            onPress={handleLogin}
+            disabled={isLoading}
+            accessibilityLabel="Iniciar sesión"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isLoading }}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-white text-lg font-semibold">Ingresar</Text>
+            )}
+          </Pressable>
 
-      <Pressable
-        className="mt-4"
-        onPress={() =>
-          Alert.alert("Soporte", "Contacta a soporte para recuperar tu PIN.")
-        }
-        accessibilityLabel="Recuperar PIN"
-        role="button"
-      >
-        <Text className="text-blue-500 text-center">¿Olvidaste tu PIN?</Text>
-      </Pressable>
-    </View>
+          <Pressable
+            className="mt-4"
+            onPress={() =>
+              Alert.alert(
+                "Recuperar PIN",
+                "Por favor, contacta a soporte para recuperar tu PIN.",
+                [{ text: "OK", style: "default" }]
+              )
+            }
+            accessibilityLabel="Recuperar PIN"
+            accessibilityRole="button"
+            accessibilityHint="Presiona para ver instrucciones de recuperación de PIN"
+          >
+            <Text className="text-blue-500 text-center">
+              ¿Olvidaste tu PIN?
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

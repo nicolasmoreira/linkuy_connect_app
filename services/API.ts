@@ -1,7 +1,21 @@
 // services/api.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
+import {
+  User,
+  Family,
+  Settings,
+  Alert,
+  ActivityLog,
+  Notification,
+  ApiGatewayResponse,
+} from "@/types";
 
 // const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Reemplaza con tu URL real
-const API_BASE_URL = 'http://ec2-18-118-160-81.us-east-2.compute.amazonaws.com/api';
+const API_BASE_URL =
+  "http://ec2-18-118-160-81.us-east-2.compute.amazonaws.com/api";
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
 interface Location {
   latitude: number;
@@ -26,110 +40,232 @@ interface HistoryEntry {
   message: string;
 }
 
-interface Settings {
-  inactivityThreshold: number;
-  dndStartTime: string;
-  dndEndTime: string;
-}
-
 interface LoginResponse {
+  status: string;
+  message: string;
   token: string;
   user: {
     id: number;
     email: string;
-    role: ["ROLE_SENIOR"] | ["ROLE_CAREGIVER"];
+    role: string[];
   };
 }
 
-const API = {
-  login: async (email: string, pin: string): Promise<LoginResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password: pin }),
-      });
+interface ApiError {
+  status: string;
+  message: string;
+}
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
+class ApiService {
+  private static instance: ApiService;
+  private token: string | null = null;
+  private isOnline: boolean = true;
+
+  private constructor() {
+    this.initializeNetworkListener();
+  }
+
+  static getInstance(): ApiService {
+    if (!ApiService.instance) {
+      ApiService.instance = new ApiService();
+    }
+    return ApiService.instance;
+  }
+
+  private async initializeNetworkListener() {
+    const netInfo = await NetInfo.fetch();
+    this.isOnline = netInfo.isConnected ?? false;
+
+    NetInfo.addEventListener((state: NetInfoState) => {
+      this.isOnline = state.isConnected ?? false;
+      if (this.isOnline) {
+        this.processOfflineQueue();
       }
+    });
+  }
 
-      const data: LoginResponse = await response.json();
-      return data;
+  private async processOfflineQueue() {
+    try {
+      const queue = await AsyncStorage.getItem("offline_queue");
+      if (queue) {
+        const requests = JSON.parse(queue);
+        for (const request of requests) {
+          await this.retryRequest(request);
+        }
+        await AsyncStorage.removeItem("offline_queue");
+      }
     } catch (error) {
-      console.error("Error in login:", error);
+      console.error("Error processing offline queue:", error);
+    }
+  }
+
+  private async retryRequest(
+    request: any,
+    retries = MAX_RETRIES
+  ): Promise<any> {
+    try {
+      return await this.makeRequest(request);
+    } catch (error) {
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+        return this.retryRequest(request, retries - 1);
+      }
       throw error;
     }
-  },
+  }
 
-  sendSensorData: async (data: SensorData): Promise<boolean> => {
-    try {
-      console.log("Enviando datos de sensores:", data);
-      // Aquí se integraría la llamada real a la API.
-      return true;
-    } catch (error) {
-      console.error("Error enviando datos de sensores:", error);
-      return false;
+  private async makeRequest(request: any): Promise<any> {
+    if (!this.isOnline) {
+      await this.addToOfflineQueue(request);
+      throw new Error("Offline mode: Request queued");
     }
-  },
 
-  sendAlert: async (alertData: AlertData): Promise<boolean> => {
-    try {
-      console.log("Enviando alerta:", alertData);
-      // Aquí se integraría la llamada real.
-      return true;
-    } catch (error) {
-      console.error("Error enviando alerta:", error);
-      return false;
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(request.url, {
+      method: request.method,
+      headers,
+      body: request.body,
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      throw new Error(text);
     }
-  },
 
-  getHistory: async (): Promise<HistoryEntry[]> => {
     try {
-      return [
-        { type: "fall", createdAt: Date.now() - 3600000, message: "Caída detectada" },
-        { type: "inactivity", createdAt: Date.now() - 7200000, message: "Inactividad prolongada" },
-      ];
+      return JSON.parse(text);
     } catch (error) {
-      console.error("Error obteniendo historial:", error);
-      return [];
+      throw new Error("Invalid JSON response");
     }
-  },
+  }
 
-  getSeniorLocation: async (): Promise<Location> => {
+  private async addToOfflineQueue(request: any) {
     try {
-      return {
-        latitude: 37.78825 + Math.random() * 0.001,
-        longitude: -122.4324 + Math.random() * 0.001,
-      };
+      const queue = await AsyncStorage.getItem("offline_queue");
+      const requests = queue ? JSON.parse(queue) : [];
+      requests.push(request);
+      await AsyncStorage.setItem("offline_queue", JSON.stringify(requests));
     } catch (error) {
-      console.error("Error obteniendo ubicación del adulto mayor:", error);
-      return { latitude: 0, longitude: 0 }; // Ubicación por defecto en caso de error
+      console.error("Error adding to offline queue:", error);
     }
-  },
+  }
 
-  getSettings: async (): Promise<Settings> => {
-    try {
-      return { inactivityThreshold: 30, dndStartTime: "22:00", dndEndTime: "07:00" };
-    } catch (error) {
-      console.error("Error obteniendo configuración:", error);
-      return { inactivityThreshold: 30, dndStartTime: "22:00", dndEndTime: "07:00" }; // Valores predeterminados
+  private async getAuthHeaders() {
+    if (!this.token) {
+      this.token = await AsyncStorage.getItem("auth_token");
     }
-  },
+    return {
+      "Content-Type": "application/json",
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+    };
+  }
 
-  updateSettings: async (settings: Settings): Promise<boolean> => {
-    try {
-      console.log("Actualizando configuración:", settings);
-      // Aquí se integraría la llamada real a la API.
-      return true;
-    } catch (error) {
-      console.error("Error actualizando configuración:", error);
-      return false;
-    }
-  },
-};
+  // Auth Methods
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ user: User; token: string }> {
+    const response = await this.makeRequest({
+      url: `${API_BASE_URL}/login`,
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
-export default API;
+    this.token = response.token;
+    await AsyncStorage.setItem("auth_token", response.token);
+    return response;
+  }
+
+  async logout(): Promise<void> {
+    this.token = null;
+    await AsyncStorage.removeItem("auth_token");
+  }
+
+  // User Methods
+  async getUser(): Promise<User> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/user`,
+      method: "GET",
+    });
+  }
+
+  async updateUser(user: Partial<User>): Promise<User> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/user`,
+      method: "PUT",
+      body: JSON.stringify(user),
+    });
+  }
+
+  // Family Methods
+  async getFamily(): Promise<Family> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/family`,
+      method: "GET",
+    });
+  }
+
+  // Settings Methods
+  async getSettings(): Promise<Settings> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/settings`,
+      method: "GET",
+    });
+  }
+
+  async updateSettings(settings: Partial<Settings>): Promise<Settings> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/settings`,
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // Alert Methods
+  async getAlerts(): Promise<Alert[]> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/alerts`,
+      method: "GET",
+    });
+  }
+
+  // Activity Methods
+  async getActivityLogs(): Promise<ActivityLog[]> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/activity-logs`,
+      method: "GET",
+    });
+  }
+
+  async getHistory(): Promise<HistoryEntry[]> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/history`,
+      method: "GET",
+    });
+  }
+
+  async getSeniorLocation(): Promise<{ latitude: number; longitude: number }> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/location`,
+      method: "GET",
+    });
+  }
+
+  // Notification Methods
+  async getNotifications(): Promise<Notification[]> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/notifications`,
+      method: "GET",
+    });
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<void> {
+    return this.makeRequest({
+      url: `${API_BASE_URL}/notifications/${notificationId}/read`,
+      method: "PUT",
+    });
+  }
+}
+
+export default ApiService.getInstance();

@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "@/services/api";
+import API from "@/services/API";
 
 interface User {
   id: number;
@@ -17,7 +17,11 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType>({ user: null, login: async () => false, logout: async () => {} });
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  login: async () => false,
+  logout: async () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -39,15 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const result = await API.login(email, password);
-        const loggedUser: User = {
-          id: result.user.id,
-          email: result.user.email,
-          role: result.user.role,
-          token: result.token,
-        };
-        await AsyncStorage.setItem("user", JSON.stringify(loggedUser));
-        setUser(loggedUser);
-        return true;
+      const loggedUser: User = {
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        token: result.token,
+      };
+      await AsyncStorage.setItem("user", JSON.stringify(loggedUser));
+      setUser(loggedUser);
+      return true;
     } catch (error: any) {
       Alert.alert("Error", error.message || "Login failed");
       return false;
