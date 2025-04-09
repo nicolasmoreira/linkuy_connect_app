@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.linkuyconnect.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Necesitamos acceso a tu ubicación para funciones de geolocalización.",
-        "NSLocationAlwaysUsageDescription": "Necesitamos acceso a tu ubicación en segundo plano para monitoreo continuo."
+        "NSLocationAlwaysUsageDescription": "Necesitamos acceso a tu ubicación en segundo plano para monitoreo continuo.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

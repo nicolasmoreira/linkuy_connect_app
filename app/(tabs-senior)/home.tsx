@@ -313,19 +313,15 @@ export default function SeniorHomeScreen() {
 
   const handleEmergencyAlert = async () => {
     try {
-      const success = await ActivityService.sendAlert({
-        type: "emergency",
+      await ActivityService.sendAlert({
+        type: "EMERGENCY_BUTTON_PRESSED",
         location,
         message: "Alerta de emergencia activada por el usuario senior.",
       });
-      if (success) {
-        Alert.alert(
-          "Alerta enviada",
-          "Tu alerta de emergencia ha sido enviada. Un cuidador será notificado inmediatamente."
-        );
-      } else {
-        Alert.alert("Error", "Hubo un problema al enviar tu alerta de emergencia.");
-      }
+      Alert.alert(
+        "Alerta enviada",
+        "Tu alerta de emergencia ha sido enviada. Un cuidador será notificado inmediatamente."
+      );
     } catch (error: any) {
       Alert.alert("Error", error.message || "Error al enviar la alerta.");
     }
