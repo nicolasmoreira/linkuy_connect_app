@@ -54,7 +54,7 @@ export default function LoginScreen() {
       const userRole = result.user.role as string[];
       if (userRole.includes("ROLE_CAREGIVER")) {
         console.log("Redirigiendo a panel de cuidador...");
-        router.push("/(tabs-caregiver)/caregiver");
+        router.push("/(tabs-caregiver)/home");
       } else if (userRole.includes("ROLE_SENIOR")) {
         console.log("Redirigiendo a panel de adulto mayor...");
         router.push("/(tabs-senior)/home");
