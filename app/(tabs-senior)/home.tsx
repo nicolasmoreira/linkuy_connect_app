@@ -184,7 +184,12 @@ export default function SeniorHome() {
     return (
       <View
         className="flex-1 bg-white dark:bg-gray-900 justify-center items-center"
-        style={{ paddingTop: insets.top }}
+        style={{
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: Math.max(insets.left, 16),
+          paddingRight: Math.max(insets.right, 16),
+        }}
       >
         <ActivityIndicator size="large" color="#2563EB" />
         <Text className="mt-4 text-gray-600 dark:text-gray-300">
@@ -197,7 +202,12 @@ export default function SeniorHome() {
   return (
     <View
       className="flex-1 bg-gray-50 dark:bg-gray-900"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+      style={{
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+        paddingLeft: Math.max(insets.left, 16),
+        paddingRight: Math.max(insets.right, 16),
+      }}
     >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-4 py-2">
