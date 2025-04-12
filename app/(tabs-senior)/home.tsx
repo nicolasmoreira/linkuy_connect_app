@@ -244,14 +244,10 @@ export default function SeniorHomeScreen() {
         setLoading(true);
         setError(null);
 
-        console.log("Iniciando seguimiento de ubicación...");
-
-        // Verificar si el userId está configurado
+        // Obtener el ID del usuario del contexto de autenticación
         const storedUser = await AsyncStorage.getItem("user");
         if (!storedUser) {
-          setError("No se ha configurado el ID de usuario");
-          setLoading(false);
-          return;
+          throw new Error("Error al obtener la información del usuario");
         }
 
         const user = JSON.parse(storedUser);

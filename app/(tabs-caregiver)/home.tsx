@@ -26,6 +26,12 @@ export default function CaregiverHome() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
+  useEffect(() => {
+    fetchLocation();
+    const interval = setInterval(fetchLocation, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchLocation = async () => {
     try {
       const response = await API.getActivityLogLocations();
@@ -53,12 +59,6 @@ export default function CaregiverHome() {
     setRefreshing(true);
     fetchLocation();
   };
-
-  useEffect(() => {
-    fetchLocation();
-    const interval = setInterval(fetchLocation, 60000); // Actualiza cada 60 segundos
-    return () => clearInterval(interval);
-  }, []);
 
   if (loading) {
     return (

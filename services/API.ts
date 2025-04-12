@@ -157,6 +157,10 @@ class ApiService {
     };
   }
 
+  setToken(token: string | null) {
+    this.token = token;
+  }
+
   // Auth Methods
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await this.makeRequest({

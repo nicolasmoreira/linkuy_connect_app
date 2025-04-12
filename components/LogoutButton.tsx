@@ -1,10 +1,10 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { AuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LogoutButton() {
-  const { logout } = useContext(AuthContext);
+  const { logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
