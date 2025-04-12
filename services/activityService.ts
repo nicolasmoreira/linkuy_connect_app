@@ -101,8 +101,10 @@ export default class ActivityService {
       location: {
         latitude: Number(payload.location.latitude),
         longitude: Number(payload.location.longitude),
-        accuracy: payload.location.accuracy ? Number(payload.location.accuracy) : null
-      }
+        accuracy: payload.location.accuracy
+          ? Number(payload.location.accuracy)
+          : null,
+      },
     };
 
     console.log("📝 Cleaned payload:", JSON.stringify(cleanPayload, null, 2));
@@ -114,15 +116,21 @@ export default class ActivityService {
     }
 
     // Validate location exactly as the Lambda does
-    if (!cleanPayload.location || 
-        typeof cleanPayload.location.latitude !== "number" || 
-        typeof cleanPayload.location.longitude !== "number" ||
-        cleanPayload.location.latitude < -90 ||
-        cleanPayload.location.latitude > 90 ||
-        cleanPayload.location.longitude < -180 ||
-        cleanPayload.location.longitude > 180) {
-      console.error("❌ Invalid location: must have valid latitude and longitude");
-      throw new Error("Invalid location: must have valid latitude and longitude");
+    if (
+      !cleanPayload.location ||
+      typeof cleanPayload.location.latitude !== "number" ||
+      typeof cleanPayload.location.longitude !== "number" ||
+      cleanPayload.location.latitude < -90 ||
+      cleanPayload.location.latitude > 90 ||
+      cleanPayload.location.longitude < -180 ||
+      cleanPayload.location.longitude > 180
+    ) {
+      console.error(
+        "❌ Invalid location: must have valid latitude and longitude"
+      );
+      throw new Error(
+        "Invalid location: must have valid latitude and longitude"
+      );
     }
 
     // Create the final payload with the exact structure the Lambda expects
@@ -132,18 +140,21 @@ export default class ActivityService {
       location: {
         latitude: cleanPayload.location.latitude,
         longitude: cleanPayload.location.longitude,
-        accuracy: cleanPayload.location.accuracy
-      }
+        accuracy: cleanPayload.location.accuracy,
+      },
     };
 
     console.log("📝 Final payload:", JSON.stringify(finalPayload, null, 2));
 
     // Ensure the request body is properly formatted
     const requestBody = {
-      body: JSON.stringify(finalPayload)
+      body: JSON.stringify(finalPayload),
     };
 
-    console.log("📤 Request body being sent:", JSON.stringify(requestBody, null, 2));
+    console.log(
+      "📤 Request body being sent:",
+      JSON.stringify(requestBody, null, 2)
+    );
 
     return this.sendRequest(payload.type, finalPayload);
   }
@@ -170,7 +181,10 @@ export default class ActivityService {
       clearTimeout(timeoutId);
 
       console.log("📥 Response status:", response.status);
-      console.log("📥 Response headers:", JSON.stringify(response.headers, null, 2));
+      console.log(
+        "📥 Response headers:",
+        JSON.stringify(response.headers, null, 2)
+      );
 
       if (!response.ok) {
         const errorData = await response.json();

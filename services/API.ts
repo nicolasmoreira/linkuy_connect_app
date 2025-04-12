@@ -1,59 +1,55 @@
 // services/api.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
-import {
-  User,
-  Family,
-  Settings,
-  Alert,
-  ActivityLog,
-  Notification,
-  ApiGatewayResponse,
-} from "@/types";
 
-// const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Reemplaza con tu URL real
-const API_BASE_URL =
-  "http://ec2-18-118-160-81.us-east-2.compute.amazonaws.com/api";
+const API_BASE_URL = "http://127.0.0.1:8000/api";
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
+interface ActivityLog {
+  id: number;
+  type: string;
+  created_at: string;
+  user: {
+    id: number;
+  };
+}
+
 interface Location {
+  id: number;
   latitude: number;
   longitude: number;
+  accuracy_meters: number;
+  created_at: string;
+  user: {
+    id: number;
+  };
 }
 
-interface SensorData {
-  location: Location | null;
-  stepCount: number;
-  acceleration: { x: number; y: number; z: number };
+interface Settings {
+  inactivity_threshold: number;
+  do_not_disturb: boolean;
+  do_not_disturb_start_time: string | null;
+  do_not_disturb_end_time: string | null;
 }
 
-interface AlertData {
-  type: "fall" | "inactivity" | "emergency";
-  location: Location | null;
-  message: string;
-}
-
-interface HistoryEntry {
-  type: "fall" | "inactivity" | "emergency";
-  createdAt: number;
-  message: string;
+interface User {
+  id: number;
+  email: string;
+  role: string[];
 }
 
 interface LoginResponse {
   status: string;
   message: string;
   token: string;
-  user: {
-    id: number;
-    email: string;
-    role: string[];
-  };
+  user: User;
 }
 
-interface ApiError {
+interface ApiResponse<T> {
   status: string;
-  message: string;
+  data: T;
+  message?: string;
 }
 
 class ApiService {
@@ -162,10 +158,7 @@ class ApiService {
   }
 
   // Auth Methods
-  async login(
-    email: string,
-    password: string
-  ): Promise<{ user: User; token: string }> {
+  async login(email: string, password: string): Promise<LoginResponse> {
     const response = await this.makeRequest({
       url: `${API_BASE_URL}/login`,
       method: "POST",
@@ -182,88 +175,43 @@ class ApiService {
     await AsyncStorage.removeItem("auth_token");
   }
 
-  // User Methods
-  async getUser(): Promise<User> {
+  async checkToken(): Promise<ApiResponse<{ message: string }>> {
     return this.makeRequest({
-      url: `${API_BASE_URL}/user`,
+      url: `${API_BASE_URL}/check-token`,
       method: "GET",
     });
   }
 
-  async updateUser(user: Partial<User>): Promise<User> {
+  // Activity Log Methods
+  async getActivityLogs(): Promise<ApiResponse<ActivityLog[]>> {
     return this.makeRequest({
-      url: `${API_BASE_URL}/user`,
-      method: "PUT",
-      body: JSON.stringify(user),
+      url: `${API_BASE_URL}/activity-log`,
+      method: "GET",
     });
   }
 
-  // Family Methods
-  async getFamily(): Promise<Family> {
+  async getActivityLogLocations(): Promise<ApiResponse<Location[]>> {
     return this.makeRequest({
-      url: `${API_BASE_URL}/family`,
+      url: `${API_BASE_URL}/activity-log/locations`,
       method: "GET",
     });
   }
 
   // Settings Methods
-  async getSettings(): Promise<Settings> {
+  async getSettings(): Promise<ApiResponse<Settings>> {
     return this.makeRequest({
       url: `${API_BASE_URL}/settings`,
       method: "GET",
     });
   }
 
-  async updateSettings(settings: Partial<Settings>): Promise<Settings> {
+  async updateSettings(
+    settings: Partial<Settings>
+  ): Promise<ApiResponse<{ message: string }>> {
     return this.makeRequest({
       url: `${API_BASE_URL}/settings`,
       method: "PUT",
       body: JSON.stringify(settings),
-    });
-  }
-
-  // Alert Methods
-  async getAlerts(): Promise<Alert[]> {
-    return this.makeRequest({
-      url: `${API_BASE_URL}/alerts`,
-      method: "GET",
-    });
-  }
-
-  // Activity Methods
-  async getActivityLogs(): Promise<ActivityLog[]> {
-    return this.makeRequest({
-      url: `${API_BASE_URL}/activity-logs`,
-      method: "GET",
-    });
-  }
-
-  async getHistory(): Promise<HistoryEntry[]> {
-    return this.makeRequest({
-      url: `${API_BASE_URL}/history`,
-      method: "GET",
-    });
-  }
-
-  async getSeniorLocation(): Promise<{ latitude: number; longitude: number }> {
-    return this.makeRequest({
-      url: `${API_BASE_URL}/location`,
-      method: "GET",
-    });
-  }
-
-  // Notification Methods
-  async getNotifications(): Promise<Notification[]> {
-    return this.makeRequest({
-      url: `${API_BASE_URL}/notifications`,
-      method: "GET",
-    });
-  }
-
-  async markNotificationAsRead(notificationId: number): Promise<void> {
-    return this.makeRequest({
-      url: `${API_BASE_URL}/notifications/${notificationId}/read`,
-      method: "PUT",
     });
   }
 }

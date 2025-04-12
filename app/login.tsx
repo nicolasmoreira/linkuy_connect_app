@@ -36,20 +36,34 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
+      console.log("Iniciando proceso de login...");
       const result = await API.login(email, pin);
+      console.log("Login exitoso, resultado:", result);
+
+      console.log("Guardando token...");
       await AsyncStorage.setItem("userToken", result.token);
-      await AsyncStorage.setItem("userInfo", JSON.stringify(result.user));
+
+      console.log("Guardando información del usuario...");
+      await AsyncStorage.setItem("user", JSON.stringify(result.user));
+      console.log("Usuario guardado:", result.user);
+
+      console.log("Configurando userId en ActivityService:", result.user.id);
       await ActivityService.setUserId(result.user.id);
 
+      console.log("Verificando rol del usuario:", result.user.role);
       const userRole = result.user.role as string[];
       if (userRole.includes("ROLE_CAREGIVER")) {
+        console.log("Redirigiendo a panel de cuidador...");
         router.push("/(tabs-caregiver)/caregiver");
       } else if (userRole.includes("ROLE_SENIOR")) {
+        console.log("Redirigiendo a panel de adulto mayor...");
         router.push("/(tabs-senior)/home");
       } else {
+        console.error("Rol de usuario desconocido:", userRole);
         Alert.alert("Error", "Rol de usuario desconocido.");
       }
     } catch (error: any) {
+      console.error("Error en login:", error);
       Alert.alert("Error", error.message || "Credenciales incorrectas.");
     } finally {
       setIsLoading(false);
