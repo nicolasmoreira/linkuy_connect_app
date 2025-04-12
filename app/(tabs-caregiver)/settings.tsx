@@ -17,9 +17,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import API from "@/services/API";
-import LogoutButton from "@/components/LogoutButton";
 import { Settings } from "@/types";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface SettingsState {
   inactivity_threshold: number;
@@ -196,51 +198,82 @@ function TimePickerInput({
 }
 
 export default function SettingsScreen() {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<SettingsState>({
     inactivity_threshold: 30,
     do_not_disturb: true,
     do_not_disturb_start_time: "22:00",
     do_not_disturb_end_time: "07:00",
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await API.getSettings();
-        if (response?.data) {
-          const apiSettings = response.data;
-          setSettings((prev) => ({
-            ...prev,
-            inactivity_threshold:
-              apiSettings.inactivity_threshold ?? prev.inactivity_threshold,
-            do_not_disturb: apiSettings.do_not_disturb ?? prev.do_not_disturb,
-            do_not_disturb_start_time:
-              apiSettings.do_not_disturb_start_time ??
-              prev.do_not_disturb_start_time,
-            do_not_disturb_end_time:
-              apiSettings.do_not_disturb_end_time ??
-              prev.do_not_disturb_end_time,
-          }));
-        }
-      } catch (error) {
-        console.error("Error fetching settings:", error);
-        Alert.alert(
-          "Error",
-          "No se pudo obtener la configuración. Por favor, intente nuevamente."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings();
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      setError(null);
+      const storedSettings = await AsyncStorage.getItem("settings");
+      if (storedSettings) {
+        const apiSettings = JSON.parse(storedSettings);
+        setSettings((prev) => ({
+          ...prev,
+          inactivity_threshold:
+            apiSettings.inactivity_threshold ?? prev.inactivity_threshold,
+          do_not_disturb: apiSettings.do_not_disturb ?? prev.do_not_disturb,
+          do_not_disturb_start_time:
+            apiSettings.do_not_disturb_start_time ??
+            prev.do_not_disturb_start_time,
+          do_not_disturb_end_time:
+            apiSettings.do_not_disturb_end_time ?? prev.do_not_disturb_end_time,
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      setError("Error al cargar la configuración");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveSettings = async (newSettings: typeof settings) => {
+    try {
+      setSaving(true);
+      setError(null);
+      await AsyncStorage.setItem("settings", JSON.stringify(newSettings));
+      setSettings(newSettings);
+      Alert.alert(
+        "Configuración guardada",
+        "Los cambios se han guardado correctamente"
+      );
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      setError("Error al guardar la configuración");
+      Alert.alert("Error", "No se pudieron guardar los cambios");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setSaving(true);
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      Alert.alert("Error", "No se pudo cerrar la sesión");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const formatTimeInput = (value: string): string => {
     // Remove any non-numeric characters
@@ -401,6 +434,12 @@ export default function SettingsScreen() {
           <View className="w-10" />
         </View>
 
+        {error && (
+          <View className="bg-red-100 dark:bg-red-900 p-4 rounded-lg mb-6">
+            <Text className="text-red-700 dark:text-red-200">{error}</Text>
+          </View>
+        )}
+
         <View className="space-y-4">
           <SettingCard
             icon="timer-outline"
@@ -501,7 +540,19 @@ export default function SettingsScreen() {
           </Pressable>
 
           <View className="mt-4">
-            <LogoutButton />
+            <Pressable
+              className="bg-red-600 p-4 rounded-lg"
+              onPress={handleLogout}
+              disabled={saving}
+              accessibilityLabel="Cerrar sesión"
+              accessibilityRole="button"
+              accessibilityHint="Presiona para cerrar la sesión"
+              accessibilityState={{ disabled: saving }}
+            >
+              <Text className="text-white text-center font-semibold">
+                {saving ? "Cerrando sesión..." : "Cerrar Sesión"}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>

@@ -9,10 +9,17 @@ interface User {
   role: string[];
 }
 
+interface LoginResponse {
+  status: string;
+  message?: string;
+  token?: string;
+  user?: User;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
 }
 
@@ -52,7 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<LoginResponse> => {
     try {
       const response = await API.login(email, password);
       console.log("Login response:", response);
@@ -66,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(response.user);
       setIsLoading(false);
-      return true;
+      return response;
     } catch (error) {
       console.error("Login error:", error);
       throw error;

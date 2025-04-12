@@ -1,55 +1,57 @@
 // app/(tabs-caregiver)/_layout.tsx
 import React from "react";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/components/useColorScheme";
+import { useColorScheme } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-function TabBarIcon({
-  name,
-  color,
-}: {
-  name: React.ComponentProps<typeof FontAwesome>["name"];
-  color: string;
-}) {
-  return (
-    <FontAwesome
-      name={name}
-      size={28}
-      color={color}
-      style={{ marginBottom: -3 }}
-    />
-  );
-}
-
-export default function CaregiverTabsLayout() {
+export default function CaregiverLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+  const isDark = colorScheme === "dark";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].primary,
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+          borderTopColor: isDark ? "#374151" : "#E5E7EB",
+          paddingBottom: insets.bottom,
+          paddingTop: 8,
+        },
+        tabBarActiveTintColor: "#2563EB",
+        tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#6B7280",
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          title: "Inicio",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+          tabBarAccessibilityLabel: "Pantalla principal",
         }}
       />
       <Tabs.Screen
         name="activity-log"
         options={{
-          title: "Actividad",
-          tabBarIcon: ({ color }) => <TabBarIcon name="list" color={color} />,
+          title: "Registro",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list" size={size} color={color} />
+          ),
+          tabBarAccessibilityLabel: "Registro de actividad",
         }}
       />
       <Tabs.Screen
-        name="settings" // Ensure you have app/settings.tsx
+        name="settings"
         options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
+          title: "Configuración",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
+          tabBarAccessibilityLabel: "Configuración",
         }}
       />
     </Tabs>

@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import API from "@/services/API";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface ActivityLogEntry {
   type:
@@ -82,6 +84,12 @@ const getAlertMessage = (type: string) => {
       return "Evento registrado";
   }
 };
+
+function formatDate(date: string) {
+  return format(new Date(date), "d 'de' MMMM 'de' yyyy 'a las' HH:mm", {
+    locale: es,
+  });
+}
 
 export default function ActivityLogScreen() {
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
@@ -197,7 +205,7 @@ export default function ActivityLogScreen() {
                     </Text>
                   </View>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                    {new Date(entry.createdAt).toLocaleString()}
+                    {formatDate(entry.createdAt.toString())}
                   </Text>
                   <Text className="text-gray-700 dark:text-gray-300">
                     {entry.message}

@@ -116,7 +116,23 @@ class ApiService {
       throw new Error("Offline mode: Request queued");
     }
 
-    const headers = await this.getAuthHeaders();
+    const defaultHeaders = {
+      "Content-Type": "application/json",
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+    };
+
+    const headers = {
+      ...defaultHeaders,
+      ...request.headers,
+    };
+
+    console.log("[API] Making request:", {
+      url: request.url,
+      method: request.method,
+      headers,
+      body: request.body,
+    });
+
     const response = await fetch(request.url, {
       method: request.method,
       headers,
@@ -124,14 +140,23 @@ class ApiService {
     });
 
     const text = await response.text();
+    console.log("[API] Response text:", text);
 
     if (!response.ok) {
-      throw new Error(text);
+      try {
+        const errorData = JSON.parse(text);
+        throw new Error(JSON.stringify(errorData));
+      } catch (error) {
+        throw new Error(text);
+      }
     }
 
     try {
-      return JSON.parse(text);
+      const data = JSON.parse(text);
+      console.log("[API] Parsed response:", data);
+      return data;
     } catch (error) {
+      console.error("[API] Error parsing response:", error);
       throw new Error("Invalid JSON response");
     }
   }
@@ -163,15 +188,29 @@ class ApiService {
 
   // Auth Methods
   async login(email: string, password: string): Promise<LoginResponse> {
+    console.log("[API] Login request:", { email, password: "******" });
+
     const response = await this.makeRequest({
       url: `${API_BASE_URL}/login`,
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
     });
 
-    this.token = response.token;
-    await AsyncStorage.setItem("auth_token", response.token);
-    return response;
+    console.log("[API] Login response:", response);
+
+    if (response.status === "success") {
+      this.token = response.token;
+      await AsyncStorage.setItem("token", response.token);
+      return response;
+    } else {
+      throw new Error(JSON.stringify(response));
+    }
   }
 
   async logout(): Promise<void> {

@@ -6,12 +6,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import MapViewComponent from "@/components/MapViewComponent";
 import API from "@/services/API";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function CaregiverHome() {
   const [seniorLocation, setSeniorLocation] = useState<{
@@ -21,6 +24,7 @@ export default function CaregiverHome() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -34,6 +38,7 @@ export default function CaregiverHome() {
 
   const fetchLocation = async () => {
     try {
+      setError(null);
       const response = await API.getActivityLogLocations();
       if (response.data && response.data.length > 0) {
         const latestLocation = response.data[0];
@@ -41,13 +46,16 @@ export default function CaregiverHome() {
           latitude: latestLocation.latitude,
           longitude: latestLocation.longitude,
         });
-        setLastUpdated(new Date().toLocaleTimeString());
+        setLastUpdated(format(new Date(), "HH:mm:ss", { locale: es }));
       } else {
-        console.log("No location data available");
         setSeniorLocation(null);
+        setError("No hay datos de ubicación disponibles");
       }
     } catch (error) {
       console.error("Error fetching senior location:", error);
+      setError(
+        "Error al obtener la ubicación. Verifica tu conexión a internet."
+      );
       setSeniorLocation(null);
     } finally {
       setLoading(false);
@@ -110,7 +118,15 @@ export default function CaregiverHome() {
             Ubicación Actual
           </Text>
           <View className="h-64 rounded-xl overflow-hidden">
-            <MapViewComponent location={seniorLocation} />
+            {seniorLocation ? (
+              <MapViewComponent location={seniorLocation} />
+            ) : (
+              <View className="flex-1 justify-center items-center bg-gray-100 dark:bg-gray-800">
+                <Text className="text-gray-500 dark:text-gray-400 text-center px-4">
+                  {error || "No hay datos de ubicación disponibles"}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
