@@ -19,7 +19,9 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Necesitamos acceso a tu ubicación para funciones de geolocalización.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos acceso a tu ubicación en segundo plano para monitoreo continuo.",
-        "UIBackgroundModes": ["location"],
+        "UIBackgroundModes": [
+          "location"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -33,7 +35,9 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE"
+        "FOREGROUND_SERVICE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -61,7 +65,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "1360bbd0-d0c1-41bc-9210-9b9a89d16c31"
+        "projectId": "9ade822b-6854-4cde-91dd-1f91e9f99f64"
       }
     },
     "owner": "linkuyconnect"

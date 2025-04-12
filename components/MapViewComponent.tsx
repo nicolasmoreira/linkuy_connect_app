@@ -166,18 +166,17 @@ export default function MapViewComponent({
         loadingIndicatorColor="#2563EB"
         loadingBackgroundColor="#ffffff"
       >
-        {isMapReady && (
-          <Marker
-            coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-            }}
-            title="Ubicación actual"
-            description="Última ubicación registrada"
-            pinColor="#2563EB"
-            onPress={onLocationPress}
-          />
-        )}
+        <Marker
+          coordinate={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }}
+          title="Ubicación actual"
+          description="Última ubicación registrada"
+          pinColor="#2563EB"
+          onPress={onLocationPress}
+          tracksViewChanges={false}
+        />
       </MapView>
 
       {/* Controles del mapa */}

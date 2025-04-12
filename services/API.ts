@@ -216,8 +216,7 @@ class ApiService {
     });
 
     if (response.status === "success" && response.token) {
-      console.log("[API] Login successful, setting token");
-      await AsyncStorage.setItem("token", response.token);
+      console.log("[API] Login successful");
       this.setToken(response.token);
     }
 
@@ -226,7 +225,6 @@ class ApiService {
 
   async logout(): Promise<void> {
     this.token = null;
-    await AsyncStorage.removeItem("auth_token");
   }
 
   async checkToken(): Promise<ApiResponse<{ message: string }>> {

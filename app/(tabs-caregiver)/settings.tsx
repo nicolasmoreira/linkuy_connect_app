@@ -22,6 +22,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useAuth } from "@/context/AuthContext";
 
 interface SettingsState {
   inactivity_threshold: number;
@@ -45,28 +46,28 @@ function SettingCard({
   const isDark = colorScheme === "dark";
 
   return (
-    <View className="bg-gray-50 dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-      <View className="p-4">
-        <View className="flex-row items-center mb-3">
-          <View className="bg-blue-100 dark:bg-blue-900 w-10 h-10 rounded-full items-center justify-center mr-3">
+    <View className="bg-gray-50 dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden mb-6">
+      <View className="p-6">
+        <View className="flex-row items-center mb-4">
+          <View className="bg-blue-100 dark:bg-blue-900 w-12 h-12 rounded-full items-center justify-center mr-4">
             <Ionicons
               name={icon}
-              size={20}
+              size={24}
               color={isDark ? "#60A5FA" : "#2563EB"}
             />
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-semibold text-gray-800 dark:text-white">
+            <Text className="text-xl font-semibold text-gray-800 dark:text-white">
               {title}
             </Text>
             {subtitle && (
-              <Text className="text-sm text-gray-600 dark:text-gray-400">
+              <Text className="text-base text-gray-600 dark:text-gray-400 mt-1">
                 {subtitle}
               </Text>
             )}
           </View>
         </View>
-        {children}
+        <View className="mt-4">{children}</View>
       </View>
     </View>
   );
@@ -211,6 +212,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+  const { logout } = useAuth();
 
   useEffect(() => {
     loadSettings();
@@ -260,12 +262,17 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     try {
       setSaving(true);
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
-      router.replace("/(auth)/login");
+      console.log("Iniciando proceso de cierre de sesión...");
+
+      // Usar la función logout del AuthContext
+      await logout();
+
+      // Forzar la navegación a login
+      console.log("Navegando a login...");
+      router.replace("/login");
     } catch (error) {
       console.error("Error during logout:", error);
-      Alert.alert("Error", "No se pudo cerrar la sesión");
+      Alert.alert("Error", "No se pudo cerrar la sesión correctamente");
     } finally {
       setSaving(false);
     }
@@ -407,7 +414,7 @@ export default function SettingsScreen() {
       contentContainerClassName="pb-8"
     >
       <View className="px-4 py-4">
-        <View className="flex-row items-center justify-between mb-6">
+        <View className="flex-row items-center justify-between mb-8">
           <Pressable
             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center"
             onPress={() => router.push("/(tabs-caregiver)/home")}
@@ -431,19 +438,19 @@ export default function SettingsScreen() {
         </View>
 
         {error && (
-          <View className="bg-red-100 dark:bg-red-900 p-4 rounded-lg mb-6">
+          <View className="bg-red-100 dark:bg-red-900 p-4 rounded-lg mb-8">
             <Text className="text-red-700 dark:text-red-200">{error}</Text>
           </View>
         )}
 
-        <View className="space-y-4">
+        <View className="space-y-8">
           <SettingCard
             icon="timer-outline"
             title="Umbral de Inactividad"
             subtitle="Tiempo en minutos antes de generar una alerta"
           >
             <TextInput
-              className="bg-white dark:bg-gray-700 px-4 py-3 rounded-xl text-gray-900 dark:text-white mt-2"
+              className="bg-white dark:bg-gray-700 px-4 py-3 rounded-xl text-gray-900 dark:text-white"
               keyboardType="numeric"
               value={String(settings.inactivity_threshold)}
               onChangeText={(text) =>
@@ -464,7 +471,7 @@ export default function SettingsScreen() {
             title="No Molestar"
             subtitle="Configura horarios para no recibir alertas"
           >
-            <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center justify-between mb-6">
               <Text className="text-base text-gray-700 dark:text-gray-300">
                 Activar modo no molestar
               </Text>
@@ -479,7 +486,7 @@ export default function SettingsScreen() {
             </View>
 
             {settings.do_not_disturb && (
-              <View className="mt-2">
+              <View className="space-y-6">
                 <TimePickerInput
                   value={settings.do_not_disturb_start_time}
                   onChangeText={(text) =>
@@ -508,7 +515,7 @@ export default function SettingsScreen() {
 
           <Pressable
             className={`
-              bg-blue-600 p-4 rounded-2xl items-center shadow-sm
+              bg-blue-600 p-4 rounded-2xl items-center shadow-sm mt-6
               ${saving ? "opacity-70" : "active:opacity-80"}
             `}
             onPress={handleSave}
@@ -535,9 +542,9 @@ export default function SettingsScreen() {
             )}
           </Pressable>
 
-          <View className="mt-4">
+          <View className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
             <Pressable
-              className="bg-red-600 p-4 rounded-lg"
+              className="flex-row items-center justify-center space-x-2"
               onPress={handleLogout}
               disabled={saving}
               accessibilityLabel="Cerrar sesión"
@@ -545,7 +552,12 @@ export default function SettingsScreen() {
               accessibilityHint="Presiona para cerrar la sesión"
               accessibilityState={{ disabled: saving }}
             >
-              <Text className="text-white text-center font-semibold">
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={isDark ? "#9CA3AF" : "#6B7280"}
+              />
+              <Text className="text-gray-500 dark:text-gray-400 text-base">
                 {saving ? "Cerrando sesión..." : "Cerrar Sesión"}
               </Text>
             </Pressable>

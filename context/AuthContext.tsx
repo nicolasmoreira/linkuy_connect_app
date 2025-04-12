@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem("token", response.token);
       await AsyncStorage.setItem("user", JSON.stringify(response.user));
 
+      API.setToken(response.token);
+
       setUser(response.user);
       setIsLoading(false);
       return response;
@@ -87,6 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.removeItem("token");
       await AsyncStorage.removeItem("user");
+
+      API.setToken(null);
+
       setUser(null);
     } catch (error) {
       console.error("Error during logout:", error);
