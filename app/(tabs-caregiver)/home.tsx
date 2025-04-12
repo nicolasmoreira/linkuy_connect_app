@@ -7,10 +7,11 @@ import {
   RefreshControl,
   ScrollView,
   Alert,
+  Linking,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import MapViewComponent from "@/components/MapViewComponent";
 import API from "@/services/API";
 import { format } from "date-fns";
@@ -25,7 +26,6 @@ export default function CaregiverHome() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -68,6 +68,16 @@ export default function CaregiverHome() {
     fetchLocation();
   };
 
+  const handleLocationPress = () => {
+    if (!seniorLocation) return;
+
+    const url = `https://www.google.com/maps/search/?api=1&query=${seniorLocation.latitude},${seniorLocation.longitude}`;
+    Linking.openURL(url).catch((err) => {
+      console.error("Error opening maps:", err);
+      Alert.alert("Error", "No se pudo abrir el mapa");
+    });
+  };
+
   if (loading) {
     return (
       <View
@@ -97,73 +107,68 @@ export default function CaregiverHome() {
       <View className="px-6 py-4">
         <View className="items-center mb-6">
           <Text
-            className="text-3xl font-bold text-gray-800 dark:text-white mb-2"
+            className="text-4xl font-bold text-gray-800 dark:text-white mb-2"
             accessibilityRole="header"
           >
             Panel de Cuidado
           </Text>
-          <Text
-            className="text-gray-600 dark:text-gray-300"
-            accessibilityRole="text"
-          >
-            Última actualización: {lastUpdated}
-          </Text>
+          <View className="flex-row items-center">
+            <Ionicons
+              name="time-outline"
+              size={20}
+              color={isDark ? "#9CA3AF" : "#4B5563"}
+            />
+            <Text
+              className="text-gray-600 dark:text-gray-300 ml-2"
+              accessibilityRole="text"
+            >
+              Última actualización: {lastUpdated}
+            </Text>
+          </View>
         </View>
 
         <View className="mb-6">
-          <Text
-            className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2"
-            accessibilityRole="text"
-          >
-            Ubicación Actual
-          </Text>
-          <View className="h-64 rounded-xl overflow-hidden">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text
+              className="text-2xl font-semibold text-gray-700 dark:text-gray-300"
+              accessibilityRole="text"
+            >
+              Ubicación Actual
+            </Text>
+            <Pressable
+              onPress={onRefresh}
+              disabled={refreshing}
+              className="p-2"
+              accessibilityLabel="Actualizar ubicación"
+              accessibilityHint="Presiona para actualizar la ubicación actual"
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={24}
+                color={isDark ? "#9CA3AF" : "#4B5563"}
+              />
+            </Pressable>
+          </View>
+          <View className="rounded-xl overflow-hidden shadow-lg">
             {seniorLocation ? (
-              <MapViewComponent location={seniorLocation} />
+              <MapViewComponent
+                location={seniorLocation}
+                height={400}
+                onLocationPress={handleLocationPress}
+              />
             ) : (
-              <View className="flex-1 justify-center items-center bg-gray-100 dark:bg-gray-800">
-                <Text className="text-gray-500 dark:text-gray-400 text-center px-4">
+              <View className="h-64 justify-center items-center bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <Ionicons
+                  name="location-outline"
+                  size={48}
+                  color={isDark ? "#9CA3AF" : "#4B5563"}
+                />
+                <Text className="text-gray-500 dark:text-gray-400 text-center px-4 mt-4">
                   {error || "No hay datos de ubicación disponibles"}
                 </Text>
               </View>
             )}
           </View>
-        </View>
-
-        <View className="flex-row justify-around space-x-4">
-          <Pressable
-            className={`
-              flex-1 bg-blue-600 px-6 py-4 rounded-xl
-              ${refreshing ? "opacity-70" : ""}
-            `}
-            onPress={() => router.push("/(tabs-caregiver)/activity-log")}
-            disabled={refreshing}
-            accessibilityLabel="Ver historial de ubicaciones"
-            accessibilityRole="button"
-            accessibilityHint="Presiona para ver el historial de ubicaciones"
-            accessibilityState={{ disabled: refreshing }}
-          >
-            <Text className="text-white text-lg font-semibold text-center">
-              Historial
-            </Text>
-          </Pressable>
-
-          <Pressable
-            className={`
-              flex-1 bg-gray-600 px-6 py-4 rounded-xl
-              ${refreshing ? "opacity-70" : ""}
-            `}
-            onPress={() => router.push("/(tabs-caregiver)/settings")}
-            disabled={refreshing}
-            accessibilityLabel="Abrir configuración"
-            accessibilityRole="button"
-            accessibilityHint="Presiona para abrir la configuración"
-            accessibilityState={{ disabled: refreshing }}
-          >
-            <Text className="text-white text-lg font-semibold text-center">
-              Configuración
-            </Text>
-          </Pressable>
         </View>
       </View>
     </ScrollView>

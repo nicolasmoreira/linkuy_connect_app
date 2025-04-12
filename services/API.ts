@@ -59,6 +59,19 @@ class ApiService {
 
   private constructor() {
     this.initializeNetworkListener();
+    this.initializeToken();
+  }
+
+  private async initializeToken() {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        console.log("[API] Token initialized from storage");
+        this.token = token;
+      }
+    } catch (error) {
+      console.error("[API] Error initializing token:", error);
+    }
   }
 
   static getInstance(): ApiService {
@@ -110,32 +123,38 @@ class ApiService {
     }
   }
 
+  private async getAuthHeaders() {
+    if (!this.token) {
+      this.token = await AsyncStorage.getItem("token");
+    }
+    return {
+      "Content-Type": "application/json",
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+    };
+  }
+
   private async makeRequest(request: any): Promise<any> {
     if (!this.isOnline) {
       await this.addToOfflineQueue(request);
       throw new Error("Offline mode: Request queued");
     }
 
-    const defaultHeaders = {
-      "Content-Type": "application/json",
-      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-    };
-
-    const headers = {
-      ...defaultHeaders,
+    const headers = await this.getAuthHeaders();
+    const requestHeaders = {
+      ...headers,
       ...request.headers,
     };
 
     console.log("[API] Making request:", {
       url: request.url,
       method: request.method,
-      headers,
+      headers: requestHeaders,
       body: request.body,
     });
 
     const response = await fetch(request.url, {
       method: request.method,
-      headers,
+      headers: requestHeaders,
       body: request.body,
     });
 
@@ -172,17 +191,11 @@ class ApiService {
     }
   }
 
-  private async getAuthHeaders() {
-    if (!this.token) {
-      this.token = await AsyncStorage.getItem("auth_token");
-    }
-    return {
-      "Content-Type": "application/json",
-      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-    };
-  }
-
   setToken(token: string | null) {
+    console.log(
+      "[API] Setting token:",
+      token ? "Token present" : "Token cleared"
+    );
     this.token = token;
   }
 
@@ -202,15 +215,13 @@ class ApiService {
       }),
     });
 
-    console.log("[API] Login response:", response);
-
-    if (response.status === "success") {
-      this.token = response.token;
+    if (response.status === "success" && response.token) {
+      console.log("[API] Login successful, setting token");
       await AsyncStorage.setItem("token", response.token);
-      return response;
-    } else {
-      throw new Error(JSON.stringify(response));
+      this.setToken(response.token);
     }
+
+    return response;
   }
 
   async logout(): Promise<void> {

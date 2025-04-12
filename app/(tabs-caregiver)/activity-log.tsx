@@ -85,10 +85,20 @@ const getAlertMessage = (type: string) => {
   }
 };
 
-function formatDate(date: string) {
-  return format(new Date(date), "d 'de' MMMM 'de' yyyy 'a las' HH:mm", {
-    locale: es,
-  });
+function formatDate(timestamp: number) {
+  try {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      console.error("[ActivityLog] Invalid date:", timestamp);
+      return "Fecha no disponible";
+    }
+    return format(date, "d 'de' MMMM 'de' yyyy 'a las' HH:mm", {
+      locale: es,
+    });
+  } catch (error) {
+    console.error("[ActivityLog] Error formatting date:", error);
+    return "Fecha no disponible";
+  }
 }
 
 export default function ActivityLogScreen() {
@@ -107,11 +117,20 @@ export default function ActivityLogScreen() {
       console.log("Activity logs response:", response);
 
       if (response.data && Array.isArray(response.data)) {
-        const formattedLog = response.data.map((log) => ({
-          type: log.type as ActivityLogEntry["type"],
-          createdAt: new Date(log.created_at).getTime(),
-          message: getAlertMessage(log.type),
-        }));
+        const formattedLog = response.data.map((log) => {
+          const timestamp = new Date(log.created_at).getTime();
+          console.log("[ActivityLog] Processing entry:", {
+            type: log.type,
+            created_at: log.created_at,
+            timestamp: timestamp,
+          });
+
+          return {
+            type: log.type as ActivityLogEntry["type"],
+            createdAt: timestamp,
+            message: getAlertMessage(log.type),
+          };
+        });
         console.log("Formatted activity log:", formattedLog);
         setActivityLog(formattedLog);
       } else {
@@ -205,7 +224,7 @@ export default function ActivityLogScreen() {
                     </Text>
                   </View>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                    {formatDate(entry.createdAt.toString())}
+                    {formatDate(entry.createdAt)}
                   </Text>
                   <Text className="text-gray-700 dark:text-gray-300">
                     {entry.message}

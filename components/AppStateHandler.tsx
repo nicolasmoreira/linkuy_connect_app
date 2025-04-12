@@ -26,7 +26,7 @@ export function AppStateHandler() {
       console.log("App has come to foreground");
 
       // Force a re-render of the current route
-      const currentRoute = router.canGoBack() ? ".." : "/";
+      const currentRoute = router.canGoBack() ? ".." : "/(auth)/login";
       router.replace(currentRoute);
     }
 

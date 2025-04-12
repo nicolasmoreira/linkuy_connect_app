@@ -12,7 +12,7 @@ export default function NotFoundScreen() {
           This screen doesn't exist.
         </ThemedText>
 
-        <Link href="/">
+        <Link href="/(auth)/login">
           <ThemedText className="text-blue-600 text-base">
             Go to home screen!
           </ThemedText>

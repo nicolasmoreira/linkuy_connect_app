@@ -89,9 +89,20 @@ export default function LoginScreen() {
       }
     } catch (error) {
       console.error("[Login] Error:", error);
-      setError(
-        error instanceof Error ? error.message : "Error al iniciar sesión"
-      );
+      let errorMessage = "Error al iniciar sesión";
+
+      if (error instanceof Error) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.message === "Invalid credentials") {
+            errorMessage = "Email o PIN incorrectos";
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -133,6 +144,14 @@ export default function LoginScreen() {
             Monitoreo y cuidado para adultos mayores
           </Text>
         </View>
+
+        {error && (
+          <View className="mb-6 p-4 bg-red-100 dark:bg-red-900 rounded-xl">
+            <Text className="text-red-700 dark:text-red-100 text-base text-center">
+              {error}
+            </Text>
+          </View>
+        )}
 
         <View className="space-y-6">
           <View>
