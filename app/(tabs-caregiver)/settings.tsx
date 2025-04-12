@@ -219,20 +219,16 @@ export default function SettingsScreen() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const storedSettings = await AsyncStorage.getItem("settings");
-      if (storedSettings) {
-        const apiSettings = JSON.parse(storedSettings);
-        setSettings((prev) => ({
-          ...prev,
-          inactivity_threshold:
-            apiSettings.inactivity_threshold ?? prev.inactivity_threshold,
-          do_not_disturb: apiSettings.do_not_disturb ?? prev.do_not_disturb,
+      const response = await API.getSettings();
+      if (response.data) {
+        setSettings({
+          inactivity_threshold: response.data.inactivity_threshold || 30,
+          do_not_disturb: response.data.do_not_disturb || false,
           do_not_disturb_start_time:
-            apiSettings.do_not_disturb_start_time ??
-            prev.do_not_disturb_start_time,
+            response.data.do_not_disturb_start_time || "22:00",
           do_not_disturb_end_time:
-            apiSettings.do_not_disturb_end_time ?? prev.do_not_disturb_end_time,
-        }));
+            response.data.do_not_disturb_end_time || "07:00",
+        });
       }
     } catch (error) {
       console.error("Error loading settings:", error);

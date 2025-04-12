@@ -14,13 +14,14 @@ import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MapViewComponent from "@/components/MapViewComponent";
 import API from "@/services/API";
-import { format } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
 import { es } from "date-fns/locale";
 
 export default function CaregiverHome() {
   const [seniorLocation, setSeniorLocation] = useState<{
     latitude: number;
     longitude: number;
+    created_at: string;
   } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -45,6 +46,7 @@ export default function CaregiverHome() {
         setSeniorLocation({
           latitude: latestLocation.latitude,
           longitude: latestLocation.longitude,
+          created_at: latestLocation.created_at,
         });
         setLastUpdated(format(new Date(), "HH:mm:ss", { locale: es }));
       } else {
@@ -76,6 +78,17 @@ export default function CaregiverHome() {
       console.error("Error opening maps:", err);
       Alert.alert("Error", "No se pudo abrir el mapa");
     });
+  };
+
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const locationTime = new Date(timestamp);
+    const minutesAgo = differenceInMinutes(now, locationTime);
+
+    if (minutesAgo < 1) return "Hace menos de un minuto";
+    if (minutesAgo < 60) return `Hace ${minutesAgo} minutos`;
+    const hoursAgo = Math.floor(minutesAgo / 60);
+    return `Hace ${hoursAgo} ${hoursAgo === 1 ? "hora" : "horas"}`;
   };
 
   if (loading) {
@@ -151,11 +164,42 @@ export default function CaregiverHome() {
           </View>
           <View className="rounded-xl overflow-hidden shadow-lg">
             {seniorLocation ? (
-              <MapViewComponent
-                location={seniorLocation}
-                height={400}
-                onLocationPress={handleLocationPress}
-              />
+              <>
+                <MapViewComponent
+                  location={seniorLocation}
+                  height={400}
+                  onLocationPress={handleLocationPress}
+                />
+                <View className="bg-white dark:bg-gray-800 p-4">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color={isDark ? "#9CA3AF" : "#4B5563"}
+                      />
+                      <Text className="text-gray-600 dark:text-gray-400 ml-2">
+                        {getTimeAgo(seniorLocation.created_at)}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={handleLocationPress}
+                      className="flex-row items-center bg-blue-100 dark:bg-blue-900 px-3 py-2 rounded-lg"
+                      accessibilityLabel="Abrir en Google Maps"
+                      accessibilityHint="Presiona para abrir la ubicación en Google Maps"
+                    >
+                      <Ionicons
+                        name="map-outline"
+                        size={16}
+                        color={isDark ? "#60A5FA" : "#2563EB"}
+                      />
+                      <Text className="text-blue-600 dark:text-blue-400 ml-2 text-sm">
+                        Abrir en Maps
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </>
             ) : (
               <View className="h-64 justify-center items-center bg-gray-100 dark:bg-gray-800 rounded-xl">
                 <Ionicons
