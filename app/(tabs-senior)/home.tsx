@@ -216,12 +216,9 @@ export default function SeniorHome() {
             <Text
               className="text-3xl font-bold text-gray-800 dark:text-white"
               accessibilityRole="header"
-              accessibilityLabel="Bienvenido a Linkuy Connect"
+              accessibilityLabel="Linkuy Connect"
             >
-              ¡Bienvenido!
-            </Text>
-            <Text className="text-lg text-gray-600 dark:text-gray-400 mt-1">
-              Estamos aquí para cuidarte
+              Linkuy Connect
             </Text>
           </View>
 
@@ -235,17 +232,6 @@ export default function SeniorHome() {
 
           {/* Botones de Emergencia */}
           <View className="mb-8">
-            <Text
-              className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2"
-              accessibilityRole="text"
-            >
-              ¿Necesitas ayuda?
-            </Text>
-            <Text className="text-base text-gray-600 dark:text-gray-400 mb-6">
-              Presiona uno de estos botones según tu emergencia
-            </Text>
-
-            {/* Botón de Alerta */}
             <View className="mb-8">
               <Pressable
                 className="bg-red-600 px-6 py-5 rounded-3xl flex-row items-center justify-center active:bg-red-700"
@@ -277,7 +263,6 @@ export default function SeniorHome() {
               </Pressable>
             </View>
 
-            {/* Botón de 911 */}
             <View className="mt-2">
               <Pressable
                 className="bg-blue-600 px-6 py-5 rounded-3xl flex-row items-center justify-center active:bg-blue-700"
@@ -409,7 +394,7 @@ export default function SeniorHome() {
                   <Ionicons
                     name="information-circle"
                     size={24}
-                    color="#2563EB"
+                    color={isDark ? "#60A5FA" : "#2563EB"}
                   />
                 </View>
                 <View className="ml-3 flex-1">
@@ -424,7 +409,11 @@ export default function SeniorHome() {
 
               <View className="flex-row items-start">
                 <View className="bg-red-100 dark:bg-red-800 rounded-full p-2">
-                  <Ionicons name="alert-circle" size={24} color="#DC2626" />
+                  <Ionicons
+                    name="alert-circle"
+                    size={24}
+                    color={isDark ? "#F87171" : "#DC2626"}
+                  />
                 </View>
                 <View className="ml-3 flex-1">
                   <Text className="text-base font-medium text-blue-800 dark:text-blue-200">
@@ -439,7 +428,11 @@ export default function SeniorHome() {
 
               <View className="flex-row items-start">
                 <View className="bg-blue-100 dark:bg-blue-800 rounded-full p-2">
-                  <Ionicons name="call" size={24} color="#1E40AF" />
+                  <Ionicons
+                    name="call"
+                    size={24}
+                    color={isDark ? "#60A5FA" : "#1E40AF"}
+                  />
                 </View>
                 <View className="ml-3 flex-1">
                   <Text className="text-base font-medium text-blue-800 dark:text-blue-200">

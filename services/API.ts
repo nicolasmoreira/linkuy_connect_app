@@ -2,7 +2,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+//const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL =
+  "https://46ulygv0l0.execute-api.us-east-2.amazonaws.com/rest/api";
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
