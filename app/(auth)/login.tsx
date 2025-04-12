@@ -72,7 +72,7 @@ export default function LoginScreen() {
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
         await AsyncStorage.setItem("token", response.token);
 
-        const userRole = response.user.role[0]; // Tomamos el primer rol del array
+        const userRole = response.user.role[0];
         if (userRole === "ROLE_CAREGIVER") {
           console.log("[Login] Redirecting to caregiver home");
           router.replace("/(tabs-caregiver)/home");
@@ -135,10 +135,16 @@ export default function LoginScreen() {
             className="text-4xl font-bold text-gray-800 dark:text-white mb-3"
             accessibilityRole="header"
           >
+            Linkuy Connect
+          </Text>
+          <Text
+            className="text-lg text-gray-600 dark:text-gray-300 text-center mb-2"
+            accessibilityRole="text"
+          >
             Bienvenido
           </Text>
           <Text
-            className="text-lg text-gray-600 dark:text-gray-300 text-center"
+            className="text-base text-gray-500 dark:text-gray-400 text-center"
             accessibilityRole="text"
           >
             Monitoreo y cuidado para adultos mayores
@@ -154,9 +160,9 @@ export default function LoginScreen() {
         )}
 
         <View className="space-y-6">
-          <View>
+          <View className="mb-8">
             <Text
-              className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2"
               accessibilityRole="text"
             >
               Correo electrónico
@@ -186,9 +192,9 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <View>
+          <View className="mb-8">
             <Text
-              className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2"
               accessibilityRole="text"
             >
               PIN
