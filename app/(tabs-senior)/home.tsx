@@ -26,7 +26,13 @@ const LOCATION_UPDATE_FETCH_TASK = "location-update-fetch-task";
 
 async function updateLocation(location: Location.LocationObject) {
   try {
-    console.log("Updating location:", location);
+    console.log("[Location] Updating location:", {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      accuracy: location.coords.accuracy,
+      timestamp: new Date().toISOString(),
+    });
+
     await ActivityService.sendLocationUpdate(
       {
         latitude: location.coords.latitude,
@@ -36,8 +42,9 @@ async function updateLocation(location: Location.LocationObject) {
       0,
       0
     );
+    console.log("[Location] Update successful");
   } catch (error) {
-    console.error("Error updating location:", error);
+    console.error("[Location] Error updating location:", error);
   }
 }
 
@@ -54,6 +61,46 @@ export default function SeniorHome() {
   const isDark = colorScheme === "dark";
   const currentLocationRef = useRef<Location.LocationObject | null>(null);
 
+  // Solicitar permisos inmediatamente al montar el componente
+  useEffect(() => {
+    const requestPermissions = async () => {
+      try {
+        // Solicitar permisos de ubicación en primer plano
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        setLocationPermission(status === "granted");
+
+        if (status === "granted") {
+          // Solicitar permisos de ubicación en segundo plano
+          const { status: backgroundStatus } =
+            await Location.requestBackgroundPermissionsAsync();
+          setBackgroundPermission(backgroundStatus === "granted");
+
+          if (backgroundStatus === "denied") {
+            Alert.alert(
+              "Permisos de Ubicación",
+              "Linkuy Connect necesita acceso a tu ubicación en segundo plano para funcionar correctamente. Por favor, ve a Configuración > Linkuy Connect > Ubicación y selecciona 'Siempre'.",
+              [
+                {
+                  text: "Ir a Configuración",
+                  onPress: () => Linking.openSettings(),
+                },
+                {
+                  text: "Cancelar",
+                  style: "cancel",
+                },
+              ]
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error requesting permissions:", error);
+      }
+    };
+
+    requestPermissions();
+  }, []);
+
+  // Inicializar el seguimiento de ubicación
   useEffect(() => {
     initializeLocationTracking();
     return () => {
@@ -77,27 +124,6 @@ export default function SeniorHome() {
 
       const user = JSON.parse(storedUser);
       ActivityService.setUserId(user.id);
-
-      // Verificar permisos de ubicación
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === "granted");
-
-      if (status !== "granted") {
-        setError("Se requieren permisos de ubicación para esta funcionalidad");
-        return;
-      }
-
-      // Verificar permisos de ubicación en segundo plano
-      const { status: backgroundStatus } =
-        await Location.requestBackgroundPermissionsAsync();
-      setBackgroundPermission(backgroundStatus === "granted");
-
-      if (backgroundStatus !== "granted") {
-        setError(
-          "Se requieren permisos de ubicación en segundo plano para esta funcionalidad"
-        );
-        return;
-      }
 
       // Iniciar el seguimiento de ubicación
       await startLocationTracking();
@@ -455,7 +481,7 @@ export default function SeniorHome() {
 // Definir tareas en segundo plano
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
-    console.error("Error in location task:", error);
+    console.error("[Location] Error in location task:", error);
     return;
   }
   if (data) {
@@ -463,23 +489,43 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     const location = locations[0];
     if (location) {
       const now = new Date();
-      const seconds = now.getSeconds();
-      // Solo enviamos la actualización si estamos en el segundo 0 del minuto
-      if (seconds === 0) {
+      const lastUpdate = await AsyncStorage.getItem("lastLocationUpdate");
+      const lastUpdateTime = lastUpdate ? new Date(lastUpdate) : null;
+
+      console.log("[Location] Task received data:", {
+        currentTime: now.toISOString(),
+        lastUpdateTime: lastUpdateTime?.toISOString(),
+        location: {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          accuracy: location.coords.accuracy,
+        },
+      });
+
+      // Si no hay última actualización o han pasado más de 45 segundos
+      if (!lastUpdateTime || now.getTime() - lastUpdateTime.getTime() > 45000) {
         console.log(
           "[Location] Sending location update at:",
           now.toISOString()
         );
         await updateLocation(location);
+        await AsyncStorage.setItem("lastLocationUpdate", now.toISOString());
       } else {
+        const timeSinceLastUpdate =
+          (now.getTime() - lastUpdateTime.getTime()) / 1000;
         console.log(
-          "[Location] Skipping update at:",
-          now.toISOString(),
-          "seconds:",
-          seconds
+          "[Location] Skipping update - too soon since last update:",
+          {
+            secondsSinceLastUpdate: timeSinceLastUpdate,
+            nextUpdateIn: 45 - timeSinceLastUpdate,
+          }
         );
       }
+    } else {
+      console.log("[Location] No location data received in task");
     }
+  } else {
+    console.log("[Location] No data received in task");
   }
 });
 

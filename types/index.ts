@@ -50,17 +50,30 @@ export interface Alert {
   user_id: number;
 }
 
+export type ActivityLogType =
+  | "LOCATION_UPDATE"
+  | "INACTIVITY_ALERT"
+  | "FALL_DETECTED"
+  | "EMERGENCY_BUTTON_PRESSED";
+
 export interface ActivityLog {
   id: number;
-  type: string;
+  type: ActivityLogType;
+  created_at: string;
+  user: {
+    id: number;
+  };
+  location?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  };
+  message?: string;
   steps?: number;
   distance_km?: number;
-  latitude?: number;
-  longitude?: number;
-  accuracy_meters?: number;
+  fall_intensity?: number;
+  inactive_duration_sec?: number;
   metadata?: any;
-  created_at: string;
-  user_id: number;
 }
 
 export interface Notification {

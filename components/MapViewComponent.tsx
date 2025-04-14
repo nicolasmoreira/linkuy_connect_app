@@ -7,7 +7,7 @@ import {
   Platform,
   Pressable,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, MapType } from "react-native-maps";
+import MapView, { Marker, MapType } from "react-native-maps";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 

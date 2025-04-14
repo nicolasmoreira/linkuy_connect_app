@@ -14,78 +14,59 @@ import { Ionicons } from "@expo/vector-icons";
 import API from "@/services/API";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { ActivityLog, ActivityLogType } from "@/types";
 
-interface ActivityLogEntry {
-  type:
-    | "LOCATION_UPDATE"
-    | "FALL_DETECTED"
-    | "INACTIVITY_ALERT"
-    | "EMERGENCY_BUTTON_PRESSED";
-  createdAt: number;
-  message: string;
-}
-
-const getAlertIcon = (type: string) => {
-  switch (type) {
-    case "LOCATION_UPDATE":
-      return "location";
-    case "EMERGENCY_BUTTON_PRESSED":
-      return "warning";
-    case "FALL_DETECTED":
-      return "alert-circle";
-    case "INACTIVITY_ALERT":
-      return "time";
-    default:
-      return "information-circle";
+const ACTIVITY_CONFIG: Record<
+  ActivityLogType,
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    color: {
+      dark: string;
+      light: string;
+    };
+    displayName: string;
+    message: string;
   }
+> = {
+  LOCATION_UPDATE: {
+    icon: "location",
+    color: {
+      dark: "text-blue-400",
+      light: "text-blue-600",
+    },
+    displayName: "Ubicación",
+    message: "Actualización de ubicación",
+  },
+  FALL_DETECTED: {
+    icon: "alert-circle",
+    color: {
+      dark: "text-orange-400",
+      light: "text-orange-600",
+    },
+    displayName: "Caída",
+    message: "Se detectó una caída",
+  },
+  INACTIVITY_ALERT: {
+    icon: "time",
+    color: {
+      dark: "text-yellow-400",
+      light: "text-yellow-600",
+    },
+    displayName: "Inactividad",
+    message: "Se detectó inactividad prolongada",
+  },
+  EMERGENCY_BUTTON_PRESSED: {
+    icon: "warning",
+    color: {
+      dark: "text-red-400",
+      light: "text-red-600",
+    },
+    displayName: "Emergencia",
+    message: "Se presionó el botón de emergencia",
+  },
 };
 
-const getAlertColor = (type: string, isDark: boolean) => {
-  switch (type) {
-    case "LOCATION_UPDATE":
-      return isDark ? "text-blue-400" : "text-blue-600";
-    case "EMERGENCY_BUTTON_PRESSED":
-      return isDark ? "text-red-400" : "text-red-600";
-    case "FALL_DETECTED":
-      return isDark ? "text-orange-400" : "text-orange-600";
-    case "INACTIVITY_ALERT":
-      return isDark ? "text-yellow-400" : "text-yellow-600";
-    default:
-      return isDark ? "text-gray-400" : "text-gray-600";
-  }
-};
-
-const formatEventType = (type: string) => {
-  switch (type) {
-    case "LOCATION_UPDATE":
-      return "Ubicación";
-    case "EMERGENCY_BUTTON_PRESSED":
-      return "Emergencia";
-    case "FALL_DETECTED":
-      return "Caída";
-    case "INACTIVITY_ALERT":
-      return "Inactividad";
-    default:
-      return type;
-  }
-};
-
-const getAlertMessage = (type: string) => {
-  switch (type) {
-    case "LOCATION_UPDATE":
-      return "Actualización de ubicación";
-    case "EMERGENCY_BUTTON_PRESSED":
-      return "Se presionó el botón de emergencia";
-    case "FALL_DETECTED":
-      return "Se detectó una caída";
-    case "INACTIVITY_ALERT":
-      return "Se detectó inactividad prolongada";
-    default:
-      return "Evento registrado";
-  }
-};
-
-function formatDate(timestamp: number) {
+function formatDate(timestamp: string) {
   try {
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) {
@@ -102,7 +83,7 @@ function formatDate(timestamp: number) {
 }
 
 export default function ActivityLogScreen() {
-  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
@@ -118,18 +99,15 @@ export default function ActivityLogScreen() {
 
       if (response.data && Array.isArray(response.data)) {
         const formattedLog = response.data.map((log) => {
-          const timestamp = new Date(log.created_at).getTime();
           console.log("[ActivityLog] Processing entry:", {
             type: log.type,
             created_at: log.created_at,
-            timestamp: timestamp,
           });
 
           return {
-            type: log.type as ActivityLogEntry["type"],
-            createdAt: timestamp,
-            message: getAlertMessage(log.type),
-          };
+            ...log,
+            message: ACTIVITY_CONFIG[log.type as ActivityLogType].message,
+          } as ActivityLog;
         });
         console.log("Formatted activity log:", formattedLog);
         setActivityLog(formattedLog);
@@ -209,22 +187,23 @@ export default function ActivityLogScreen() {
                   <View className="flex-row items-center mb-2">
                     <View className="p-2 rounded-full bg-gray-100 dark:bg-gray-700">
                       <Ionicons
-                        name={getAlertIcon(entry.type)}
+                        name={ACTIVITY_CONFIG[entry.type].icon}
                         size={20}
                         color={isDark ? "#60A5FA" : "#2563EB"}
                       />
                     </View>
                     <Text
-                      className={`ml-3 text-base font-semibold ${getAlertColor(
-                        entry.type,
+                      className={`ml-3 text-base font-semibold ${
                         isDark
-                      )}`}
+                          ? ACTIVITY_CONFIG[entry.type].color.dark
+                          : ACTIVITY_CONFIG[entry.type].color.light
+                      }`}
                     >
-                      {formatEventType(entry.type)}
+                      {ACTIVITY_CONFIG[entry.type].displayName}
                     </Text>
                   </View>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                    {formatDate(entry.createdAt)}
+                    {formatDate(entry.created_at)}
                   </Text>
                   <Text className="text-gray-700 dark:text-gray-300">
                     {entry.message}

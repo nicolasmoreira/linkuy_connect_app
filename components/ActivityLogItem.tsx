@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityLog } from "../types/activity";
+import { ActivityLog } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -56,7 +56,7 @@ export default function ActivityLogItem({
   const iconName = getActivityIcon(activity.type);
   const colorClass = getActivityColor(activity.type);
   const title = getActivityTitle(activity.type);
-  const timeAgo = formatDistanceToNow(new Date(activity.timestamp), {
+  const timeAgo = formatDistanceToNow(new Date(activity.created_at), {
     addSuffix: true,
     locale: es,
   });

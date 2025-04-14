@@ -17,11 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import API from "@/services/API";
-import { Settings } from "@/types";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { useAuth } from "@/context/AuthContext";
 
 interface SettingsState {
