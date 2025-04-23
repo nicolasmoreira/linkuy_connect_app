@@ -21,6 +21,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,10 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
+    checkAuth();
   }, []);
 
-  const loadUser = async () => {
+  const checkAuth = async () => {
     try {
       const storedToken = await AsyncStorage.getItem("token");
       const storedUser = await AsyncStorage.getItem("user");
@@ -59,28 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (
-    email: string,
-    password: string
-  ): Promise<LoginResponse> => {
+  const login = async (email: string, password: string) => {
     try {
       const response = await API.login(email, password);
-      console.log("Login response:", response);
-
-      if (!response.token || !response.user) {
-        throw new Error("Invalid login response");
+      if (response.status === "success" && response.user) {
+        setUser(response.user);
       }
-
-      await AsyncStorage.setItem("token", response.token);
-      await AsyncStorage.setItem("user", JSON.stringify(response.user));
-
-      API.setToken(response.token);
-
-      setUser(response.user);
-      setIsLoading(false);
       return response;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("[Auth] Login error:", error);
       throw error;
     }
   };
@@ -99,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,6 +4,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import React, { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { View, ActivityIndicator } from "react-native";
 
 function AuthGuard() {
@@ -53,9 +54,11 @@ function AuthGuard() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <SafeAreaProvider>
-        <AuthGuard />
-      </SafeAreaProvider>
+      <NotificationProvider>
+        <SafeAreaProvider>
+          <AuthGuard />
+        </SafeAreaProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

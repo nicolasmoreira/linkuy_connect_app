@@ -54,7 +54,12 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-class ApiService {
+interface DeviceTokenResponse {
+  status: string;
+  message: string;
+}
+
+export class ApiService {
   private static instance: ApiService;
   private token: string | null = null;
   private isOnline: boolean = true;
@@ -202,8 +207,16 @@ class ApiService {
   }
 
   // Auth Methods
-  async login(email: string, password: string): Promise<LoginResponse> {
-    console.log("[API] Login request:", { email, password: "******" });
+  async login(
+    email: string,
+    password: string,
+    pushToken?: string
+  ): Promise<LoginResponse> {
+    console.log("[API] Login request:", {
+      email,
+      password: "******",
+      hasPushToken: !!pushToken,
+    });
 
     const response = await this.makeRequest({
       url: `${API_BASE_URL}/login`,
@@ -214,6 +227,7 @@ class ApiService {
       body: JSON.stringify({
         email,
         password,
+        pushToken,
       }),
     });
 
@@ -266,6 +280,15 @@ class ApiService {
       url: `${API_BASE_URL}/settings`,
       method: "PUT",
       body: JSON.stringify(settings),
+    });
+  }
+
+  async addDeviceToken(deviceToken: string): Promise<DeviceTokenResponse> {
+    console.log("[API] Adding device token:", deviceToken);
+    return this.makeRequest({
+      url: `${API_BASE_URL}/device-token`,
+      method: "POST",
+      body: JSON.stringify({ device_token: deviceToken }),
     });
   }
 }

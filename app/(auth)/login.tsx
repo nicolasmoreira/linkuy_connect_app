@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationContext";
+import API from "@/services/API";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -44,6 +46,7 @@ export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const { login } = useAuth();
+  const { registerForPushNotifications } = useNotifications();
   const router = useRouter();
   const [errors, setErrors] = useState<LoginError[]>([]);
 
@@ -93,6 +96,19 @@ export default function LoginScreen() {
 
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
         await AsyncStorage.setItem("token", response.token);
+
+        // Register for push notifications and send token to backend
+        const pushToken = await registerForPushNotifications();
+        if (pushToken) {
+          try {
+            console.log("[Login] Sending device token to backend");
+            await API.addDeviceToken(pushToken);
+            console.log("[Login] Device token sent successfully");
+          } catch (error) {
+            console.error("[Login] Error sending device token:", error);
+            // We don't want to block the login flow if token registration fails
+          }
+        }
 
         const userRole = response.user.role[0];
         if (userRole === "ROLE_CAREGIVER") {
