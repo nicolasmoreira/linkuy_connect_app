@@ -36,10 +36,8 @@ export interface Family {
 }
 
 export interface Settings {
-  inactivity_threshold: number;
-  do_not_disturb: boolean;
-  do_not_disturb_start_time?: string;
-  do_not_disturb_end_time?: string;
+  fall_threshold: number;
+  emergency_contacts: string[];
 }
 
 export interface Alert {
@@ -52,9 +50,9 @@ export interface Alert {
 
 export type ActivityLogType =
   | "LOCATION_UPDATE"
-  | "INACTIVITY_ALERT"
   | "FALL_DETECTED"
-  | "EMERGENCY_BUTTON_PRESSED";
+  | "EMERGENCY_BUTTON_PRESSED"
+  | "INACTIVITY_ALERT";
 
 export interface ActivityLog {
   id: number;
@@ -72,7 +70,7 @@ export interface ActivityLog {
   steps?: number;
   distance_km?: number;
   fall_intensity?: number;
-  inactive_duration_sec?: number;
+  post_fall_inactivity_sec?: number;
   metadata?: any;
 }
 

@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import API from "@/services/API";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ActivityLog, ActivityLogType } from "@/types";
+import { ActivityLog, ActivityLogType } from "@/types/index";
 
 const ACTIVITY_CONFIG: Record<
   ActivityLogType,

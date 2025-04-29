@@ -5,7 +5,6 @@ import { useColorScheme } from "react-native";
 
 export default function SeniorLayout() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
 
   return (
     <Stack

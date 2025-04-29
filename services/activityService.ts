@@ -1,5 +1,4 @@
 import { EVENT_TYPES } from "@/constants/EventTypes";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL =
   "https://46ulygv0l0.execute-api.us-east-2.amazonaws.com/activity";
@@ -8,44 +7,6 @@ interface Location {
   latitude: number;
   longitude: number;
   accuracy?: number;
-}
-
-interface ActivityPayload {
-  user_id: number;
-  type: string;
-  location: Location;
-  steps?: number;
-  distance_km?: number;
-  fall_intensity?: number;
-  inactive_duration_sec?: number;
-  message?: string;
-}
-
-interface ApiGatewayResponse {
-  statusCode: number;
-  headers: { [key: string]: string };
-  body: string;
-}
-
-interface FallAlertData {
-  type: "FALL_DETECTED" | "FALL_EMERGENCY" | "EMERGENCY_BUTTON_PRESSED";
-  location: {
-    latitude: number;
-    longitude: number;
-    accuracy?: number;
-  };
-  sensorData?: {
-    acceleration: {
-      x: number;
-      y: number;
-      z: number;
-    };
-    gyroscope: {
-      x: number;
-      y: number;
-      z: number;
-    };
-  };
 }
 
 export default class ActivityService {
@@ -91,81 +52,16 @@ export default class ActivityService {
     });
   }
 
-  static async sendInactivityAlert(
-    location: Location,
-    inactivityDuration: number
-  ) {
+  static async sendEmergencyButtonPressed(location: Location) {
     if (!this.userId) {
       throw new Error("User ID not set. Call setUserId first.");
     }
 
-    return this.sendRequest(EVENT_TYPES.INACTIVITY_ALERT, {
+    return this.sendRequest(EVENT_TYPES.EMERGENCY_BUTTON_PRESSED, {
       user_id: this.userId,
-      type: EVENT_TYPES.INACTIVITY_ALERT,
+      type: EVENT_TYPES.EMERGENCY_BUTTON_PRESSED,
       location,
-      inactive_duration_sec: inactivityDuration,
     });
-  }
-
-  static async sendAlert(alertData: FallAlertData): Promise<void> {
-    try {
-      if (!this.userId) {
-        throw new Error("User ID not set. Call setUserId first.");
-      }
-
-      const payload = {
-        user_id: this.userId,
-        type: alertData.type,
-        location: alertData.location,
-        sensorData: alertData.sensorData,
-        timestamp: new Date().toISOString(),
-      };
-
-      console.log(
-        "[ActivityService] Sending alert payload:",
-        JSON.stringify(payload, null, 2)
-      );
-
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      console.log("[ActivityService] Response status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[ActivityService] Error response body:", errorText);
-        throw new Error(
-          `Failed to send ${alertData.type
-            .toLowerCase()
-            .replace(/_/g, " ")} alert: ${response.status} ${
-            response.statusText
-          }`
-        );
-      }
-
-      const responseData = await response.json();
-      console.log(
-        "[ActivityService] Success response:",
-        JSON.stringify(responseData, null, 2)
-      );
-
-      console.log(
-        `[ActivityService] ${alertData.type} alert sent successfully`
-      );
-    } catch (error) {
-      console.error(
-        `[ActivityService] Error sending ${alertData.type
-          .toLowerCase()
-          .replace(/_/g, " ")} alert:`,
-        error
-      );
-      throw error;
-    }
   }
 
   private static async sendRequest(type: string, payload: any) {

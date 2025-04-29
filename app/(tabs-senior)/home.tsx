@@ -9,7 +9,6 @@ import {
   Linking,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import * as TaskManager from "expo-task-manager";
@@ -18,23 +17,11 @@ import * as BackgroundFetch from "expo-background-fetch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ActivityService from "@/services/activityService";
 import FallDetectionService from "@/services/fallDetectionService";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
+import { SENSOR_CONFIG } from "@/services/config";
 
 const LOCATION_TASK_NAME = "background-location-task";
-const INACTIVITY_TASK_NAME = "inactivity-alert-task";
 const FALL_DETECTION_TASK_NAME = "background-fall-detection-task";
-const LOCATION_UPDATE_FETCH_TASK = "location-update-fetch-task";
-
-const SENSOR_CONFIG = {
-  SAMPLE_INTERVAL: 100, // ms
-  WINDOW_SIZE: 10, // number of samples to consider
-  FALL_THRESHOLD: 2.5, // g-force threshold for fall detection
-  MIN_FALL_DURATION: 200, // ms
-  FALL_COOLDOWN: 30000, // ms (30 seconds)
-  POST_FALL_INACTIVITY: 300, // seconds (5 minutes)
-} as const;
 
 async function updateLocation(location: Location.LocationObject) {
   try {
@@ -82,16 +69,12 @@ export default function SeniorHome() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
-  const [backgroundPermission, setBackgroundPermission] =
-    useState<boolean>(false);
   const [isTracking, setIsTracking] = useState<boolean>(false);
   const [isFallDetectionActive, setIsFallDetectionActive] =
     useState<boolean>(false);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const currentLocationRef = useRef<Location.LocationObject | null>(null);
 
   // Solicitar permisos inmediatamente al montar el componente
   useEffect(() => {
@@ -105,8 +88,6 @@ export default function SeniorHome() {
           // Solicitar permisos de ubicación en segundo plano
           const { status: backgroundStatus } =
             await Location.requestBackgroundPermissionsAsync();
-          setBackgroundPermission(backgroundStatus === "granted");
-
           if (backgroundStatus === "denied") {
             Alert.alert(
               "Permisos de Ubicación",
@@ -342,13 +323,10 @@ export default function SeniorHome() {
 
       console.log("[Emergency] Current location:", location);
 
-      await ActivityService.sendAlert({
-        type: "EMERGENCY_BUTTON_PRESSED",
-        location: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          accuracy: location.coords.accuracy ?? undefined,
-        },
+      await ActivityService.sendEmergencyButtonPressed({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy ?? undefined,
       });
 
       Alert.alert(
@@ -692,27 +670,6 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     }
   } else {
     console.log("[Location] No data received in task");
-  }
-});
-
-TaskManager.defineTask(INACTIVITY_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error("Error in inactivity task:", error);
-    return;
-  }
-  if (data) {
-    const { locations } = data as { locations: Location.LocationObject[] };
-    const location = locations[0];
-    if (location) {
-      await ActivityService.sendInactivityAlert(
-        {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          accuracy: location.coords.accuracy ?? undefined,
-        },
-        300 // 5 minutos de inactividad
-      );
-    }
   }
 });
 
