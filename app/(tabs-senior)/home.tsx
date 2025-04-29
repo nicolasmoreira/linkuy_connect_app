@@ -14,15 +14,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import * as TaskManager from "expo-task-manager";
 import * as Location from "expo-location";
+import * as BackgroundFetch from "expo-background-fetch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ActivityService from "@/services/activityService";
+import FallDetectionService from "@/services/fallDetectionService";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 
 const LOCATION_TASK_NAME = "background-location-task";
 const INACTIVITY_TASK_NAME = "inactivity-alert-task";
+const FALL_DETECTION_TASK_NAME = "background-fall-detection-task";
 const LOCATION_UPDATE_FETCH_TASK = "location-update-fetch-task";
+
+const SENSOR_CONFIG = {
+  SAMPLE_INTERVAL: 100, // ms
+  WINDOW_SIZE: 10, // number of samples to consider
+  FALL_THRESHOLD: 2.5, // g-force threshold for fall detection
+  MIN_FALL_DURATION: 200, // ms
+  FALL_COOLDOWN: 30000, // ms (30 seconds)
+  POST_FALL_INACTIVITY: 300, // seconds (5 minutes)
+} as const;
 
 async function updateLocation(location: Location.LocationObject) {
   try {
@@ -32,6 +44,24 @@ async function updateLocation(location: Location.LocationObject) {
       accuracy: location.coords.accuracy,
       timestamp: new Date().toISOString(),
     });
+
+    // Guardar la ubicación en AsyncStorage para uso en detección de caídas
+    const locationData = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      accuracy: location.coords.accuracy,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("[Location] Storing location data:", locationData);
+    await AsyncStorage.setItem(
+      "lastLocationData",
+      JSON.stringify(locationData)
+    );
+
+    // Verificar que se guardó correctamente
+    const storedData = await AsyncStorage.getItem("lastLocationData");
+    console.log("[Location] Stored data verification:", storedData);
 
     await ActivityService.sendLocationUpdate(
       {
@@ -55,6 +85,8 @@ export default function SeniorHome() {
   const [backgroundPermission, setBackgroundPermission] =
     useState<boolean>(false);
   const [isTracking, setIsTracking] = useState<boolean>(false);
+  const [isFallDetectionActive, setIsFallDetectionActive] =
+    useState<boolean>(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -105,6 +137,7 @@ export default function SeniorHome() {
     initializeLocationTracking();
     return () => {
       stopLocationTracking();
+      FallDetectionService.getInstance().stopTracking();
     };
   }, []);
 
@@ -125,9 +158,135 @@ export default function SeniorHome() {
       const user = JSON.parse(storedUser);
       ActivityService.setUserId(user.id);
 
+      // Registrar la tarea de detección de caídas
+      console.log("[FallDetection] Registering fall detection task...");
+      const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(
+        FALL_DETECTION_TASK_NAME
+      );
+      console.log("[FallDetection] Task registered:", isTaskRegistered);
+
+      if (!isTaskRegistered) {
+        console.log("[FallDetection] Task not registered, registering now...");
+        await TaskManager.defineTask(
+          FALL_DETECTION_TASK_NAME,
+          async ({ data, error }) => {
+            console.log("[FallDetection] Task executed with data:", data);
+            if (error) {
+              console.error("[FallDetection] Task error:", error);
+              return;
+            }
+            if (data) {
+              console.log("[FallDetection] Task received data:", data);
+
+              // Obtener el último dato del sensor
+              const lastSensorData = await AsyncStorage.getItem(
+                "lastSensorData"
+              );
+              console.log("[FallDetection] Last sensor data:", lastSensorData);
+
+              if (lastSensorData) {
+                const sensorData = JSON.parse(lastSensorData);
+                const magnitude = Math.sqrt(
+                  Math.pow(sensorData.x, 2) +
+                    Math.pow(sensorData.y, 2) +
+                    Math.pow(sensorData.z, 2)
+                );
+
+                console.log("[FallDetection] Processing sensor data:", {
+                  magnitude: magnitude.toFixed(2),
+                  threshold: SENSOR_CONFIG.FALL_THRESHOLD,
+                  isAboveThreshold: magnitude > SENSOR_CONFIG.FALL_THRESHOLD,
+                });
+
+                if (magnitude > SENSOR_CONFIG.FALL_THRESHOLD) {
+                  try {
+                    // Obtener la última ubicación guardada
+                    const lastLocationData = await AsyncStorage.getItem(
+                      "lastLocationData"
+                    );
+                    console.log(
+                      "[FallDetection] Raw last location data from storage:",
+                      lastLocationData
+                    );
+
+                    if (lastLocationData) {
+                      const location = JSON.parse(lastLocationData);
+                      console.log(
+                        "[FallDetection] Parsed location data:",
+                        location
+                      );
+
+                      if (location.latitude && location.longitude) {
+                        console.log(
+                          "[FallDetection] Sending fall detected with location:",
+                          {
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            accuracy: location.accuracy,
+                          }
+                        );
+
+                        await ActivityService.sendFallDetected(
+                          {
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            accuracy: location.accuracy,
+                          },
+                          magnitude,
+                          SENSOR_CONFIG.POST_FALL_INACTIVITY
+                        );
+                      } else {
+                        console.error(
+                          "[FallDetection] Invalid location data:",
+                          location
+                        );
+                        throw new Error("Invalid location data");
+                      }
+                    } else {
+                      console.error(
+                        "[FallDetection] No location data found in storage"
+                      );
+                      throw new Error("No location data available");
+                    }
+                  } catch (locationError) {
+                    console.error(
+                      "[FallDetection] Error processing location:",
+                      locationError
+                    );
+                    // Enviar la alerta de caída sin ubicación
+                    await ActivityService.sendFallDetected(
+                      {
+                        latitude: 0,
+                        longitude: 0,
+                        accuracy: 0,
+                      },
+                      magnitude,
+                      SENSOR_CONFIG.POST_FALL_INACTIVITY
+                    );
+                  }
+                }
+              } else {
+                console.log("[FallDetection] No sensor data available");
+              }
+            } else {
+              console.log("[FallDetection] No data received in task");
+            }
+            return BackgroundFetch.BackgroundFetchResult.NewData;
+          }
+        );
+      }
+
       // Iniciar el seguimiento de ubicación
       await startLocationTracking();
       setIsTracking(true);
+
+      // Iniciar la detección de caídas
+      console.log("[FallDetection] Starting fall detection tracking...");
+      await FallDetectionService.getInstance().startTracking();
+      setIsFallDetectionActive(true);
+      console.log(
+        "[FallDetection] Fall detection tracking started successfully"
+      );
     } catch (error) {
       console.error("Error initializing location tracking:", error);
       setError("Error al inicializar el seguimiento de ubicación");
@@ -323,21 +482,12 @@ export default function SeniorHome() {
 
           {/* Estado y Permisos en una tarjeta */}
           <View className="bg-white dark:bg-gray-800 rounded-2xl shadow-md mb-6 overflow-hidden">
-            <View className="border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-              <Text
-                className="text-xl font-bold text-gray-800 dark:text-gray-200"
-                accessibilityRole="text"
-              >
-                Estado del Sistema
-              </Text>
-            </View>
-
-            <View className="p-4 space-y-4">
+            <View className="p-6 space-y-6">
               {/* Estado del Seguimiento */}
               <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center flex-1">
                   <View
-                    className={`p-2 rounded-full ${
+                    className={`p-3 rounded-full ${
                       isTracking ? "bg-green-100" : "bg-red-100"
                     }`}
                   >
@@ -347,11 +497,11 @@ export default function SeniorHome() {
                       color={isTracking ? "#22C55E" : "#EF4444"}
                     />
                   </View>
-                  <View className="ml-3 flex-1">
+                  <View className="ml-4 flex-1">
                     <Text className="text-base font-medium text-gray-700 dark:text-gray-300">
                       Seguimiento
                     </Text>
-                    <Text className="text-sm text-gray-500 dark:text-gray-400">
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       Tu ubicación está siendo monitoreada
                     </Text>
                   </View>
@@ -367,11 +517,45 @@ export default function SeniorHome() {
                 </Text>
               </View>
 
+              {/* Estado de la Detección de Caídas */}
+              <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center flex-1">
+                  <View
+                    className={`p-3 rounded-full ${
+                      isFallDetectionActive ? "bg-green-100" : "bg-red-100"
+                    }`}
+                  >
+                    <Ionicons
+                      name="alert-circle"
+                      size={24}
+                      color={isFallDetectionActive ? "#22C55E" : "#EF4444"}
+                    />
+                  </View>
+                  <View className="ml-4 flex-1">
+                    <Text className="text-base font-medium text-gray-700 dark:text-gray-300">
+                      Detección de Caídas
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Sistema de detección de caídas
+                    </Text>
+                  </View>
+                </View>
+                <Text
+                  className={`text-base font-bold ${
+                    isFallDetectionActive
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}
+                >
+                  {isFallDetectionActive ? "Activo" : "Inactivo"}
+                </Text>
+              </View>
+
               {/* Permisos */}
               <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center flex-1">
                   <View
-                    className={`p-2 rounded-full ${
+                    className={`p-3 rounded-full ${
                       locationPermission ? "bg-green-100" : "bg-red-100"
                     }`}
                   >
@@ -381,11 +565,11 @@ export default function SeniorHome() {
                       color={locationPermission ? "#22C55E" : "#EF4444"}
                     />
                   </View>
-                  <View className="ml-3 flex-1">
+                  <View className="ml-4 flex-1">
                     <Text className="text-base font-medium text-gray-700 dark:text-gray-300">
                       Permisos
                     </Text>
-                    <Text className="text-sm text-gray-500 dark:text-gray-400">
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       Acceso a tu ubicación
                     </Text>
                   </View>
@@ -415,24 +599,6 @@ export default function SeniorHome() {
             </View>
 
             <View className="p-4 space-y-4">
-              <View className="flex-row items-start">
-                <View className="bg-blue-100 dark:bg-blue-800 rounded-full p-2">
-                  <Ionicons
-                    name="information-circle"
-                    size={24}
-                    color={isDark ? "#60A5FA" : "#2563EB"}
-                  />
-                </View>
-                <View className="ml-3 flex-1">
-                  <Text className="text-base font-medium text-blue-800 dark:text-blue-200">
-                    Seguimiento Automático
-                  </Text>
-                  <Text className="text-sm text-blue-700 dark:text-blue-300">
-                    Tu ubicación se actualiza cada minuto para mantenerte seguro
-                  </Text>
-                </View>
-              </View>
-
               <View className="flex-row items-start">
                 <View className="bg-red-100 dark:bg-red-800 rounded-full p-2">
                   <Ionicons
@@ -502,8 +668,8 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         },
       });
 
-      // Si no hay última actualización o han pasado más de 45 segundos
-      if (!lastUpdateTime || now.getTime() - lastUpdateTime.getTime() > 45000) {
+      // Si no hay última actualización o han pasado más de 60 segundos
+      if (!lastUpdateTime || now.getTime() - lastUpdateTime.getTime() > 60000) {
         console.log(
           "[Location] Sending location update at:",
           now.toISOString()
@@ -517,7 +683,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           "[Location] Skipping update - too soon since last update:",
           {
             secondsSinceLastUpdate: timeSinceLastUpdate,
-            nextUpdateIn: 45 - timeSinceLastUpdate,
+            nextUpdateIn: 60 - timeSinceLastUpdate,
           }
         );
       }
@@ -548,4 +714,98 @@ TaskManager.defineTask(INACTIVITY_TASK_NAME, async ({ data, error }) => {
       );
     }
   }
+});
+
+TaskManager.defineTask(FALL_DETECTION_TASK_NAME, async ({ data, error }) => {
+  if (error) {
+    console.error("[FallDetection] Error in fall detection task:", error);
+    return;
+  }
+  if (data) {
+    console.log("[FallDetection] Task received data:", data);
+
+    // Obtener el último dato del sensor
+    const lastSensorData = await AsyncStorage.getItem("lastSensorData");
+    console.log("[FallDetection] Last sensor data:", lastSensorData);
+
+    if (lastSensorData) {
+      const sensorData = JSON.parse(lastSensorData);
+      const magnitude = Math.sqrt(
+        Math.pow(sensorData.x, 2) +
+          Math.pow(sensorData.y, 2) +
+          Math.pow(sensorData.z, 2)
+      );
+
+      console.log("[FallDetection] Processing sensor data:", {
+        magnitude: magnitude.toFixed(2),
+        threshold: SENSOR_CONFIG.FALL_THRESHOLD,
+        isAboveThreshold: magnitude > SENSOR_CONFIG.FALL_THRESHOLD,
+      });
+
+      if (magnitude > SENSOR_CONFIG.FALL_THRESHOLD) {
+        try {
+          // Obtener la última ubicación guardada
+          const lastLocationData = await AsyncStorage.getItem(
+            "lastLocationData"
+          );
+          console.log(
+            "[FallDetection] Raw last location data from storage:",
+            lastLocationData
+          );
+
+          if (lastLocationData) {
+            const location = JSON.parse(lastLocationData);
+            console.log("[FallDetection] Parsed location data:", location);
+
+            if (location.latitude && location.longitude) {
+              console.log(
+                "[FallDetection] Sending fall detected with location:",
+                {
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  accuracy: location.accuracy,
+                }
+              );
+
+              await ActivityService.sendFallDetected(
+                {
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  accuracy: location.accuracy,
+                },
+                magnitude,
+                SENSOR_CONFIG.POST_FALL_INACTIVITY
+              );
+            } else {
+              console.error("[FallDetection] Invalid location data:", location);
+              throw new Error("Invalid location data");
+            }
+          } else {
+            console.error("[FallDetection] No location data found in storage");
+            throw new Error("No location data available");
+          }
+        } catch (locationError) {
+          console.error(
+            "[FallDetection] Error processing location:",
+            locationError
+          );
+          // Enviar la alerta de caída sin ubicación
+          await ActivityService.sendFallDetected(
+            {
+              latitude: 0,
+              longitude: 0,
+              accuracy: 0,
+            },
+            magnitude,
+            SENSOR_CONFIG.POST_FALL_INACTIVITY
+          );
+        }
+      }
+    } else {
+      console.log("[FallDetection] No sensor data available");
+    }
+  } else {
+    console.log("[FallDetection] No data received in task");
+  }
+  return BackgroundFetch.BackgroundFetchResult.NewData;
 });

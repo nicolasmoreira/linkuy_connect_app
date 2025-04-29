@@ -27,6 +27,27 @@ interface ApiGatewayResponse {
   body: string;
 }
 
+interface FallAlertData {
+  type: "FALL_DETECTED" | "FALL_EMERGENCY" | "EMERGENCY_BUTTON_PRESSED";
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  };
+  sensorData?: {
+    acceleration: {
+      x: number;
+      y: number;
+      z: number;
+    };
+    gyroscope: {
+      x: number;
+      y: number;
+      z: number;
+    };
+  };
+}
+
 export default class ActivityService {
   private static userId: number | null = null;
 
@@ -86,77 +107,65 @@ export default class ActivityService {
     });
   }
 
-  static async sendAlert(payload: any) {
-    if (!this.userId) {
-      throw new Error("User ID not set. Call setUserId first.");
-    }
+  static async sendAlert(alertData: FallAlertData): Promise<void> {
+    try {
+      if (!this.userId) {
+        throw new Error("User ID not set. Call setUserId first.");
+      }
 
-    console.log("📝 Raw payload received:", JSON.stringify(payload, null, 2));
-    console.log("📝 Current userId:", this.userId);
+      const payload = {
+        user_id: this.userId,
+        type: alertData.type,
+        location: alertData.location,
+        sensorData: alertData.sensorData,
+        timestamp: new Date().toISOString(),
+      };
 
-    // Create a clean payload with only the required fields and ensure correct types
-    const cleanPayload = {
-      user_id: Number(this.userId),
-      type: String(payload.type),
-      location: {
-        latitude: Number(payload.location.latitude),
-        longitude: Number(payload.location.longitude),
-        accuracy: payload.location.accuracy
-          ? Number(payload.location.accuracy)
-          : null,
-      },
-    };
+      console.log(
+        "[ActivityService] Sending alert payload:",
+        JSON.stringify(payload, null, 2)
+      );
 
-    console.log("📝 Cleaned payload:", JSON.stringify(cleanPayload, null, 2));
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    // Validate the payload before sending
-    if (!cleanPayload.user_id || !cleanPayload.type || !cleanPayload.location) {
-      console.error("❌ Invalid payload: missing required fields");
-      throw new Error("Invalid payload: missing required fields");
-    }
+      console.log("[ActivityService] Response status:", response.status);
 
-    // Validate location exactly as the Lambda does
-    if (
-      !cleanPayload.location ||
-      typeof cleanPayload.location.latitude !== "number" ||
-      typeof cleanPayload.location.longitude !== "number" ||
-      cleanPayload.location.latitude < -90 ||
-      cleanPayload.location.latitude > 90 ||
-      cleanPayload.location.longitude < -180 ||
-      cleanPayload.location.longitude > 180
-    ) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[ActivityService] Error response body:", errorText);
+        throw new Error(
+          `Failed to send ${alertData.type
+            .toLowerCase()
+            .replace(/_/g, " ")} alert: ${response.status} ${
+            response.statusText
+          }`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log(
+        "[ActivityService] Success response:",
+        JSON.stringify(responseData, null, 2)
+      );
+
+      console.log(
+        `[ActivityService] ${alertData.type} alert sent successfully`
+      );
+    } catch (error) {
       console.error(
-        "❌ Invalid location: must have valid latitude and longitude"
+        `[ActivityService] Error sending ${alertData.type
+          .toLowerCase()
+          .replace(/_/g, " ")} alert:`,
+        error
       );
-      throw new Error(
-        "Invalid location: must have valid latitude and longitude"
-      );
+      throw error;
     }
-
-    // Create the final payload with the exact structure the Lambda expects
-    const finalPayload = {
-      user_id: cleanPayload.user_id,
-      type: cleanPayload.type,
-      location: {
-        latitude: cleanPayload.location.latitude,
-        longitude: cleanPayload.location.longitude,
-        accuracy: cleanPayload.location.accuracy,
-      },
-    };
-
-    console.log("📝 Final payload:", JSON.stringify(finalPayload, null, 2));
-
-    // Ensure the request body is properly formatted
-    const requestBody = {
-      body: JSON.stringify(finalPayload),
-    };
-
-    console.log(
-      "📤 Request body being sent:",
-      JSON.stringify(requestBody, null, 2)
-    );
-
-    return this.sendRequest(payload.type, finalPayload);
   }
 
   private static async sendRequest(type: string, payload: any) {
