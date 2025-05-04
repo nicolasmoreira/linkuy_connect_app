@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import API from "@/services/API";
+import API from "@/services/api";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ActivityLog, ActivityLogType } from "@/types/index";

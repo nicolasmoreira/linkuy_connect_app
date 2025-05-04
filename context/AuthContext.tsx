@@ -1,7 +1,7 @@
 // context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "@/services/API";
+import API from "@/services/api";
 
 interface User {
   id: number;

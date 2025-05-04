@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityLog } from "../types";
+import { ActivityLog } from "../types/index";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 

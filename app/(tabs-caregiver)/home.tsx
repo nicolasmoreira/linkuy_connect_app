@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MapViewComponent from "@/components/MapViewComponent";
-import API from "@/services/API";
+import API from "@/services/api";
 import { format, differenceInMinutes } from "date-fns";
 import { es } from "date-fns/locale";
 

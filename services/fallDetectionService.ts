@@ -1,7 +1,4 @@
-import * as TaskManager from "expo-task-manager";
-import * as BackgroundFetch from "expo-background-fetch";
 import { Accelerometer } from "expo-sensors";
-import ActivityService from "./activityService";
 import { SENSOR_CONFIG } from "./config";
 import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,12 +12,6 @@ export class FallDetectionService {
   private lastFallTime: number = 0;
   private potentialFallStartTime: number = 0;
   private isProcessingFall: boolean = false;
-  private sensorData: Array<{
-    x: number;
-    y: number;
-    z: number;
-    timestamp: number;
-  }> = [];
   private notificationChannelId: string = "fall-detection";
 
   private constructor() {
@@ -70,7 +61,6 @@ export class FallDetectionService {
       }
 
       await Accelerometer.setUpdateInterval(SENSOR_CONFIG.SAMPLE_INTERVAL);
-      await this.setupTask();
 
       Accelerometer.addListener((data) => {
         if (!this.isTracking) return;
@@ -116,100 +106,48 @@ export class FallDetectionService {
     }
   }
 
-  private async setupTask() {
-    try {
-      const isRegistered = await TaskManager.isTaskRegisteredAsync(
-        FALL_DETECTION_TASK_NAME
-      );
-      if (isRegistered) {
-        await TaskManager.unregisterTaskAsync(FALL_DETECTION_TASK_NAME);
-      }
-
-      await TaskManager.defineTask(FALL_DETECTION_TASK_NAME, async () => {
-        try {
-          if (!this.isTracking) {
-            return BackgroundFetch.BackgroundFetchResult.NoData;
-          }
-
-          const data = this.sensorData[this.sensorData.length - 1];
-          if (data) {
-            await this.processSensorData(data);
-          }
-          return BackgroundFetch.BackgroundFetchResult.NewData;
-        } catch (error) {
-          console.error("[FallDetection] Error in background task:", error);
-          return BackgroundFetch.BackgroundFetchResult.Failed;
-        }
-      });
-
-      await BackgroundFetch.registerTaskAsync(FALL_DETECTION_TASK_NAME, {
-        minimumInterval: SENSOR_CONFIG.SAMPLE_INTERVAL,
-        stopOnTerminate: false,
-        startOnBoot: true,
-      });
-
-      console.log("[FallDetection] Background task registered successfully");
-    } catch (error) {
-      console.error("[FallDetection] Error setting up background task:", error);
-      throw error;
-    }
-  }
-
   private async processSensorData(acceleration: {
     x: number;
     y: number;
     z: number;
   }) {
     const now = Date.now();
-    this.sensorData.push({
-      x: acceleration.x,
-      y: acceleration.y,
-      z: acceleration.z,
-      timestamp: now,
-    });
 
+    // Guardar el último dato del sensor
     await AsyncStorage.setItem("lastSensorData", JSON.stringify(acceleration));
 
-    const windowStartTime =
-      now - SENSOR_CONFIG.WINDOW_SIZE * SENSOR_CONFIG.SAMPLE_INTERVAL;
-    this.sensorData = this.sensorData.filter(
-      (data) => data.timestamp >= windowStartTime
+    // Calcular la magnitud
+    const magnitude = Math.sqrt(
+      Math.pow(acceleration.x, 2) +
+        Math.pow(acceleration.y, 2) +
+        Math.pow(acceleration.z, 2)
     );
 
-    if (this.sensorData.length >= SENSOR_CONFIG.WINDOW_SIZE) {
-      const magnitude = this.calculateAccelerationMagnitude();
+    console.log("[FallDetection] Processing sensor data:", {
+      magnitude: magnitude.toFixed(2),
+      threshold: SENSOR_CONFIG.FALL_THRESHOLD,
+      isAboveThreshold: magnitude > SENSOR_CONFIG.FALL_THRESHOLD,
+    });
 
-      if (magnitude > SENSOR_CONFIG.FALL_THRESHOLD) {
-        if (!this.isProcessingFall) {
-          this.potentialFallStartTime = now;
-          this.isProcessingFall = true;
-        }
-
-        const fallDuration = now - this.potentialFallStartTime;
-        if (fallDuration >= SENSOR_CONFIG.MIN_FALL_DURATION) {
-          await this.handlePotentialFall(magnitude);
-        }
-      } else if (this.isProcessingFall) {
-        this.isProcessingFall = false;
+    if (magnitude > SENSOR_CONFIG.FALL_THRESHOLD) {
+      if (!this.isProcessingFall) {
+        this.potentialFallStartTime = now;
+        this.isProcessingFall = true;
       }
+
+      const fallDuration = now - this.potentialFallStartTime;
+      if (fallDuration >= SENSOR_CONFIG.MIN_FALL_DURATION) {
+        await this.handlePotentialFall(magnitude);
+      }
+    } else if (this.isProcessingFall) {
+      this.isProcessingFall = false;
     }
-  }
-
-  private calculateAccelerationMagnitude(): number {
-    const recentData = this.sensorData.slice(-SENSOR_CONFIG.WINDOW_SIZE);
-    const avgX =
-      recentData.reduce((sum, data) => sum + data.x, 0) / recentData.length;
-    const avgY =
-      recentData.reduce((sum, data) => sum + data.y, 0) / recentData.length;
-    const avgZ =
-      recentData.reduce((sum, data) => sum + data.z, 0) / recentData.length;
-
-    return Math.sqrt(avgX * avgX + avgY * avgY + avgZ * avgZ);
   }
 
   private async handlePotentialFall(magnitude: number) {
     const now = Date.now();
     if (now - this.lastFallTime < SENSOR_CONFIG.FALL_COOLDOWN) {
+      console.log("[FallDetection] Fall detection skipped - cooldown period");
       return;
     }
 
@@ -226,31 +164,43 @@ export class FallDetectionService {
 
       let location = { latitude: 0, longitude: 0, accuracy: 0 };
       if (lastLocationData) {
-        const parsedLocation = JSON.parse(lastLocationData);
-        if (parsedLocation.latitude && parsedLocation.longitude) {
-          location = {
-            latitude: parsedLocation.latitude,
-            longitude: parsedLocation.longitude,
-            accuracy: parsedLocation.accuracy,
-          };
-          console.log(
-            "[FallDetection] Using last known location for fall:",
-            location
-          );
-        } else {
+        try {
+          const parsedLocation = JSON.parse(lastLocationData);
+          if (parsedLocation.latitude && parsedLocation.longitude) {
+            location = {
+              latitude: parsedLocation.latitude,
+              longitude: parsedLocation.longitude,
+              accuracy: parsedLocation.accuracy || 0,
+            };
+            console.log(
+              "[FallDetection] Using last known location for fall:",
+              location
+            );
+          } else {
+            console.error(
+              "[FallDetection] Invalid location data in storage:",
+              parsedLocation
+            );
+          }
+        } catch (parseError) {
           console.error(
-            "[FallDetection] Invalid location data in storage:",
-            parsedLocation
+            "[FallDetection] Error parsing location data:",
+            parseError
           );
         }
       } else {
         console.error("[FallDetection] No location data available for fall");
       }
 
-      await ActivityService.sendFallDetected(
-        location,
-        magnitude,
-        SENSOR_CONFIG.POST_FALL_INACTIVITY
+      // Guardar el estado de la caída para que la tarea en segundo plano lo procese
+      await AsyncStorage.setItem(
+        "lastFallDetection",
+        JSON.stringify({
+          timestamp: now,
+          magnitude,
+          location,
+          processed: false,
+        })
       );
 
       Alert.alert(
@@ -262,7 +212,7 @@ export class FallDetectionService {
       console.error("[FallDetection] Error handling potential fall:", error);
       Alert.alert(
         "Error de Comunicación",
-        "No se pudo enviar la alerta de caída. Por favor, verifica tu conexión a internet.",
+        "No se pudo procesar la caída. Por favor, verifica tu conexión a internet.",
         [{ text: "OK" }]
       );
     }

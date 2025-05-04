@@ -151,108 +151,63 @@ export default function SeniorHome() {
         await TaskManager.defineTask(
           FALL_DETECTION_TASK_NAME,
           async ({ data, error }) => {
-            console.log("[FallDetection] Task executed with data:", data);
             if (error) {
-              console.error("[FallDetection] Task error:", error);
-              return;
-            }
-            if (data) {
-              console.log("[FallDetection] Task received data:", data);
-
-              // Obtener el último dato del sensor
-              const lastSensorData = await AsyncStorage.getItem(
-                "lastSensorData"
+              console.error(
+                "[FallDetection] Error in fall detection task:",
+                error
               );
-              console.log("[FallDetection] Last sensor data:", lastSensorData);
-
-              if (lastSensorData) {
-                const sensorData = JSON.parse(lastSensorData);
-                const magnitude = Math.sqrt(
-                  Math.pow(sensorData.x, 2) +
-                    Math.pow(sensorData.y, 2) +
-                    Math.pow(sensorData.z, 2)
-                );
-
-                console.log("[FallDetection] Processing sensor data:", {
-                  magnitude: magnitude.toFixed(2),
-                  threshold: SENSOR_CONFIG.FALL_THRESHOLD,
-                  isAboveThreshold: magnitude > SENSOR_CONFIG.FALL_THRESHOLD,
-                });
-
-                if (magnitude > SENSOR_CONFIG.FALL_THRESHOLD) {
-                  try {
-                    // Obtener la última ubicación guardada
-                    const lastLocationData = await AsyncStorage.getItem(
-                      "lastLocationData"
-                    );
-                    console.log(
-                      "[FallDetection] Raw last location data from storage:",
-                      lastLocationData
-                    );
-
-                    if (lastLocationData) {
-                      const location = JSON.parse(lastLocationData);
-                      console.log(
-                        "[FallDetection] Parsed location data:",
-                        location
-                      );
-
-                      if (location.latitude && location.longitude) {
-                        console.log(
-                          "[FallDetection] Sending fall detected with location:",
-                          {
-                            latitude: location.latitude,
-                            longitude: location.longitude,
-                            accuracy: location.accuracy,
-                          }
-                        );
-
-                        await ActivityService.sendFallDetected(
-                          {
-                            latitude: location.latitude,
-                            longitude: location.longitude,
-                            accuracy: location.accuracy,
-                          },
-                          magnitude,
-                          SENSOR_CONFIG.POST_FALL_INACTIVITY
-                        );
-                      } else {
-                        console.error(
-                          "[FallDetection] Invalid location data:",
-                          location
-                        );
-                        throw new Error("Invalid location data");
-                      }
-                    } else {
-                      console.error(
-                        "[FallDetection] No location data found in storage"
-                      );
-                      throw new Error("No location data available");
-                    }
-                  } catch (locationError) {
-                    console.error(
-                      "[FallDetection] Error processing location:",
-                      locationError
-                    );
-                    // Enviar la alerta de caída sin ubicación
-                    await ActivityService.sendFallDetected(
-                      {
-                        latitude: 0,
-                        longitude: 0,
-                        accuracy: 0,
-                      },
-                      magnitude,
-                      SENSOR_CONFIG.POST_FALL_INACTIVITY
-                    );
-                  }
-                }
-              } else {
-                console.log("[FallDetection] No sensor data available");
-              }
-            } else {
-              console.log("[FallDetection] No data received in task");
+              return BackgroundFetch.BackgroundFetchResult.Failed;
             }
-            return BackgroundFetch.BackgroundFetchResult.NewData;
+
+            try {
+              console.log("[FallDetection] Task executed with data:", data);
+
+              // Obtener la última caída detectada
+              const lastFallDetection = await AsyncStorage.getItem(
+                "lastFallDetection"
+              );
+              console.log(
+                "[FallDetection] Last fall detection:",
+                lastFallDetection
+              );
+
+              if (!lastFallDetection) {
+                console.log("[FallDetection] No fall detection to process");
+                return BackgroundFetch.BackgroundFetchResult.NoData;
+              }
+
+              const fallData = JSON.parse(lastFallDetection);
+
+              // Si ya fue procesada, no hacer nada
+              if (fallData.processed) {
+                console.log("[FallDetection] Fall already processed");
+                return BackgroundFetch.BackgroundFetchResult.NoData;
+              }
+
+              // Enviar la alerta de caída
+              await ActivityService.sendFallDetected(
+                fallData.location,
+                fallData.magnitude,
+                SENSOR_CONFIG.POST_FALL_INACTIVITY
+              );
+
+              // Marcar como procesada
+              await AsyncStorage.setItem(
+                "lastFallDetection",
+                JSON.stringify({
+                  ...fallData,
+                  processed: true,
+                })
+              );
+
+              return BackgroundFetch.BackgroundFetchResult.NewData;
+            } catch (error) {
+              console.error(
+                "[FallDetection] Error in fall detection task:",
+                error
+              );
+              return BackgroundFetch.BackgroundFetchResult.Failed;
+            }
           }
         );
       }
@@ -671,98 +626,4 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   } else {
     console.log("[Location] No data received in task");
   }
-});
-
-TaskManager.defineTask(FALL_DETECTION_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error("[FallDetection] Error in fall detection task:", error);
-    return;
-  }
-  if (data) {
-    console.log("[FallDetection] Task received data:", data);
-
-    // Obtener el último dato del sensor
-    const lastSensorData = await AsyncStorage.getItem("lastSensorData");
-    console.log("[FallDetection] Last sensor data:", lastSensorData);
-
-    if (lastSensorData) {
-      const sensorData = JSON.parse(lastSensorData);
-      const magnitude = Math.sqrt(
-        Math.pow(sensorData.x, 2) +
-          Math.pow(sensorData.y, 2) +
-          Math.pow(sensorData.z, 2)
-      );
-
-      console.log("[FallDetection] Processing sensor data:", {
-        magnitude: magnitude.toFixed(2),
-        threshold: SENSOR_CONFIG.FALL_THRESHOLD,
-        isAboveThreshold: magnitude > SENSOR_CONFIG.FALL_THRESHOLD,
-      });
-
-      if (magnitude > SENSOR_CONFIG.FALL_THRESHOLD) {
-        try {
-          // Obtener la última ubicación guardada
-          const lastLocationData = await AsyncStorage.getItem(
-            "lastLocationData"
-          );
-          console.log(
-            "[FallDetection] Raw last location data from storage:",
-            lastLocationData
-          );
-
-          if (lastLocationData) {
-            const location = JSON.parse(lastLocationData);
-            console.log("[FallDetection] Parsed location data:", location);
-
-            if (location.latitude && location.longitude) {
-              console.log(
-                "[FallDetection] Sending fall detected with location:",
-                {
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  accuracy: location.accuracy,
-                }
-              );
-
-              await ActivityService.sendFallDetected(
-                {
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  accuracy: location.accuracy,
-                },
-                magnitude,
-                SENSOR_CONFIG.POST_FALL_INACTIVITY
-              );
-            } else {
-              console.error("[FallDetection] Invalid location data:", location);
-              throw new Error("Invalid location data");
-            }
-          } else {
-            console.error("[FallDetection] No location data found in storage");
-            throw new Error("No location data available");
-          }
-        } catch (locationError) {
-          console.error(
-            "[FallDetection] Error processing location:",
-            locationError
-          );
-          // Enviar la alerta de caída sin ubicación
-          await ActivityService.sendFallDetected(
-            {
-              latitude: 0,
-              longitude: 0,
-              accuracy: 0,
-            },
-            magnitude,
-            SENSOR_CONFIG.POST_FALL_INACTIVITY
-          );
-        }
-      }
-    } else {
-      console.log("[FallDetection] No sensor data available");
-    }
-  } else {
-    console.log("[FallDetection] No data received in task");
-  }
-  return BackgroundFetch.BackgroundFetchResult.NewData;
 });
