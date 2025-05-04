@@ -4,14 +4,18 @@
     "slug": "linkuy-connect",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icons/ios-light.png",
     "scheme": "linkuyconnect",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/icons/splash-icon-light.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#ffffff",
+      "dark": {
+        "image": "./assets/icons/splash-icon-dark.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "ios": {
       "supportsTablet": true,
@@ -24,12 +28,21 @@
         "NSMotionUsageDescription": "Necesitamos acceso al acelerómetro para la detección de caídas.",
         "UIBackgroundFetchIntervalMinimum": 60
       },
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "icon": "./assets/icons/ios-light.png",
+      "dark": {
+        "icon": "./assets/icons/ios-dark.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icons/adaptive-icon.png",
+        "backgroundColor": "#ffffff",
+        "dark": {
+          "foregroundImage": "./assets/icons/adaptive-icon.png",
+          "backgroundColor": "#ffffff"
+        }
       },
       "package": "com.linkuyconnect.app",
       "permissions": [
@@ -47,7 +60,7 @@
       "foregroundService": {
         "notificationTitle": "Linkuy Connect",
         "notificationBody": "Monitoreando tu ubicación y actividad",
-        "notificationColor": "#2563EB"
+        "notificationColor": "#ffffff"
       }
     },
     "web": {
@@ -69,6 +82,19 @@
         "expo-sensors",
         {
           "motionPermission": "Necesitamos acceso al acelerómetro para la detección de caídas."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icons/splash-icon-light.png",
+          "backgroundColor": "#ffffff",
+          "resizeMode": "contain",
+          "dark": {
+            "image": "./assets/icons/splash-icon-dark.png",
+            "backgroundColor": "#ffffff"
+          },
+          "imageWidth": 300
         }
       ]
     ],

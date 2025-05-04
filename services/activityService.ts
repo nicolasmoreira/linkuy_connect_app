@@ -1,7 +1,7 @@
 import { EVENT_TYPES } from "@/constants/EventTypes";
 
 const API_URL =
-  "https://46ulygv0l0.execute-api.us-east-2.amazonaws.com/activity";
+  "https://38hvp0os0a.execute-api.us-east-2.amazonaws.com/activity";
 
 interface Location {
   latitude: number;
