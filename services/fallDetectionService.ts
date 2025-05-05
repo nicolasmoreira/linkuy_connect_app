@@ -3,6 +3,7 @@ import { SENSOR_CONFIG } from "./config";
 import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import ActivityService from "./activityService";
 
 const FALL_DETECTION_TASK_NAME = "background-fall-detection-task";
 
@@ -155,6 +156,10 @@ export class FallDetectionService {
     this.isProcessingFall = false;
 
     try {
+      console.log(
+        "[FallDetection] handlePotentialFall INICIO, magnitude:",
+        magnitude
+      );
       // Obtener la última ubicación guardada
       const lastLocationData = await AsyncStorage.getItem("lastLocationData");
       console.log(
@@ -193,6 +198,9 @@ export class FallDetectionService {
       }
 
       // Guardar el estado de la caída para que la tarea en segundo plano lo procese
+      console.log(
+        "[FallDetection] Guardando lastFallDetection en AsyncStorage..."
+      );
       await AsyncStorage.setItem(
         "lastFallDetection",
         JSON.stringify({
@@ -202,12 +210,36 @@ export class FallDetectionService {
           processed: false,
         })
       );
+      console.log("[FallDetection] lastFallDetection guardado correctamente");
 
+      // Enviar el evento de caída al backend también en foreground
+      console.log(
+        "[FallDetection] Intentando enviar evento de caída al backend (foreground)..."
+      );
+      try {
+        const response = await ActivityService.sendFallDetected(
+          location,
+          magnitude,
+          SENSOR_CONFIG.POST_FALL_INACTIVITY
+        );
+        console.log(
+          "[FallDetection] Evento de caída enviado con éxito (foreground):",
+          response
+        );
+      } catch (error) {
+        console.error(
+          "[FallDetection] Error enviando evento de caída (foreground):",
+          error
+        );
+      }
+
+      console.log("[FallDetection] Mostrando alerta de caída al usuario...");
       Alert.alert(
         "¡Caída Detectada!",
         "Se ha detectado una posible caída. Tu cuidador ha sido notificado.",
         [{ text: "OK" }]
       );
+      console.log("[FallDetection] Alert mostrado");
     } catch (error) {
       console.error("[FallDetection] Error handling potential fall:", error);
       Alert.alert(
@@ -215,6 +247,7 @@ export class FallDetectionService {
         "No se pudo procesar la caída. Por favor, verifica tu conexión a internet.",
         [{ text: "OK" }]
       );
+      console.log("[FallDetection] Alert de error mostrado");
     }
   }
 }

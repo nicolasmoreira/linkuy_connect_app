@@ -29,20 +29,12 @@
         "UIBackgroundFetchIntervalMinimum": 60
       },
       "googleServicesFile": "./GoogleService-Info.plist",
-      "icon": "./assets/icons/ios-light.png",
-      "dark": {
-        "icon": "./assets/icons/ios-dark.png",
-        "backgroundColor": "#ffffff"
-      }
+      "icon": "./assets/icons/ios-light.png"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "dark": {
-          "foregroundImage": "./assets/icons/adaptive-icon.png",
-          "backgroundColor": "#ffffff"
-        }
+        "backgroundColor": "#ffffff"
       },
       "package": "com.linkuyconnect.app",
       "permissions": [
@@ -56,12 +48,7 @@
         "android.permission.WAKE_LOCK",
         "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
-      "googleServicesFile": "./google-services.json",
-      "foregroundService": {
-        "notificationTitle": "Linkuy Connect",
-        "notificationBody": "Monitoreando tu ubicación y actividad",
-        "notificationColor": "#ffffff"
-      }
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -99,8 +86,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "router": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {
