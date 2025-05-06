@@ -1,17 +1,60 @@
 # Linkuy Connect - Mobile App
 
-Mobile application for monitoring and caring for older adults, developed with Expo, React Native, and TypeScript. Features include fall detection, emergency alerts, activity logging, and push notifications.
+A comprehensive mobile application for monitoring and caring for older adults, developed with Expo, React Native, and TypeScript. The app features advanced fall detection, emergency alerts, real-time location tracking, and push notifications, with a strong focus on accessibility and user experience.
 
-## Table of Contents
+## Features
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Available Scripts](#available-scripts)
-- [Dependencies](#dependencies)
-- [Testing](#testing)
-- [OTA Deployment](#ota-deployment)
-- [Contributing](#contributing)
-- [License](#license)
+- **Emergency Response System**
+
+  - One-tap emergency alerts to caregivers
+  - Direct 911 emergency calling
+  - Real-time location sharing during emergencies
+
+- **Fall Detection**
+
+  - Advanced accelerometer-based fall detection
+  - Background monitoring
+  - Automatic alert system for detected falls
+  - Post-fall inactivity monitoring
+
+- **Location Tracking**
+
+  - Real-time location monitoring
+  - Background location updates
+  - Geofencing capabilities
+  - Location history logging
+
+- **Accessibility Features**
+  - Full VoiceOver and TalkBack support
+  - High contrast mode
+  - Dynamic text sizing
+  - Screen reader optimizations
+  - Keyboard navigation support
+  - Gesture-based interactions
+
+## Technical Stack
+
+- **Framework**: Expo (Managed Workflow)
+- **Language**: TypeScript
+- **UI Components**: React Native
+- **Styling**: NativeWind (Tailwind CSS)
+- **State Management**: React Context + useReducer
+- **Navigation**: Expo Router
+- **Location Services**: expo-location
+- **Background Tasks**: expo-task-manager
+- **Notifications**: expo-notifications
+- **Storage**: @react-native-async-storage/async-storage
+- **Validation**: Zod
+- **Icons**: @expo/vector-icons
+
+## Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator (for iOS development)
+- Android Studio (for Android development)
+- Physical device for testing (recommended)
 
 ## Installation
 
@@ -25,82 +68,103 @@ Mobile application for monitoring and caring for older adults, developed with Ex
 2. **Install dependencies:**
 
    ```bash
-   npm install -g expo-cli
    npm install
+   # or
+   yarn install
    ```
 
-## Usage
+3. **Configure environment variables:**
+   Create a `.env` file in the root directory with the following variables:
+   ```
+   EXPO_PUBLIC_API_URL=your_api_url
+   EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+   ```
 
-Start the development server:
+## Development
 
-```bash
-expo start
-```
+1. **Start the development server:**
 
-Run on a physical device or emulator:
+   ```bash
+   npx expo start
+   ```
 
-- **iOS:** Press `i` to open in the iOS simulator (macOS only).
-- **Android:** Press `a` to open in the Android emulator, or scan the QR code with Expo Go.
-
-## Available Scripts
-
-- `expo start`: Starts the development server.
-- `expo build`: Builds the project for production.
-- `expo eject`: Ejects to a bare React Native project.
-- `npm test`: Runs unit tests with Jest.
-
-## Dependencies
-
-- **expo**: Framework for cross-platform mobile development.
-- **react-navigation**: App navigation and routing.
-- **expo-location**: Access to device location.
-- **expo-notifications**: Push and local notifications.
-- **nativewind**: Tailwind CSS utilities for React Native.
-- **@expo/vector-icons**: Vector icons.
-- **react-native-safe-area-context**: Safe area handling.
-- **expo-sensors**: Access to device sensors like accelerometer.
-- **expo-task-manager**: Background tasks.
-- **expo-image**: Image optimization and loading.
-- **zod**: Data validation and schemas.
-- **jest**: Unit testing.
+2. **Run on specific platforms:**
+   - iOS: Press `i` in the terminal or run `npx expo run:ios`
+   - Android: Press `a` in the terminal or run `npx expo run:android`
+   - Web: Press `w` in the terminal or run `npx expo start:web`
 
 ## Testing
 
-Run unit tests:
+1. **Unit Tests:**
 
-```bash
-npm test
-```
+   ```bash
+   npm test
+   ```
 
-For integration and end-to-end tests, consider using Detox or Expo E2E tools.
+2. **E2E Tests:**
+   ```bash
+   npm run e2e
+   ```
 
-## OTA Deployment (Over-the-Air)
+## Building for Production
 
-To publish OTA updates with Expo:
+1. **Create a production build:**
 
-```bash
-expo publish
-```
+   ```bash
+   # For iOS
+   npx expo build:ios
 
-For production builds:
+   # For Android
+   npx expo build:android
+   ```
 
-```bash
-expo build:android
-expo build:ios
-```
+2. **Publish OTA updates:**
+   ```bash
+   npx expo publish
+   ```
 
-See the [official Expo documentation](https://docs.expo.dev/distribution/introduction/) for deployment and publishing details.
+## Accessibility Guidelines
+
+The app follows WCAG 2.1 guidelines and implements the following accessibility features:
+
+- **Screen Reader Support**
+
+  - Descriptive labels for all interactive elements
+  - Proper heading hierarchy
+  - Meaningful alt text for images
+  - Clear navigation structure
+
+- **Visual Accessibility**
+
+  - High contrast mode support
+  - Dynamic text sizing
+  - Sufficient touch target sizes (minimum 44x44 points)
+  - Clear visual feedback for interactions
+
+- **Keyboard Navigation**
+  - Full keyboard support
+  - Logical tab order
+  - Visible focus indicators
+  - Keyboard shortcuts for common actions
 
 ## Contributing
 
-1. Fork the project.
-2. Create your feature branch (`git checkout -b feature/YourFeature`).
-3. Commit your changes (`git commit -m 'Add new feature'`).
-4. Push to your branch (`git push origin feature/YourFeature`).
-5. Open a Pull Request.
-
-Contributions are welcome!
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0. See the LICENSE file for details.
+This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support, please open an issue in the GitHub repository or contact the development team.
+
+## Acknowledgments
+
+- Expo team for the amazing framework
+- React Native community for the extensive ecosystem
+- All contributors who have helped shape this project
